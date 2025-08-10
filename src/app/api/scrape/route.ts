@@ -8,13 +8,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
+    if (!url.startsWith("https://www.amazon.in")) {
+      return NextResponse.json(
+        { error: "Only amazon.in links are supported." },
+        { status: 400 }
+      );
+    }
+
     const browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      timeout: 20000,
     });
 
     const page = await browser.newPage();
     await page.setRequestInterception(true);
+    page.setDefaultTimeout(20000);
+
     page.on("request", (req) => {
       if (
         ["image", "stylesheet", "font", "media"].includes(req.resourceType())
@@ -25,7 +35,15 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+
+    await page.evaluate(() => {
+      const readMoreLinks = document.querySelectorAll(
+        '[data-hook="review-expand-link"]'
+      );
+      readMoreLinks.forEach((link) => (link as HTMLElement).click());
+    });
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const data = await page.evaluate(() => {
       const getText = (s: string) =>
@@ -34,50 +52,40 @@ export async function POST(req: NextRequest) {
         document.querySelector(s)?.getAttribute(attr)?.trim() || null;
 
       const selectors = {
-        title: ["#productTitle", "h1"],
-        price: [
-          ".a-price .a-offscreen",
-          ".price",
-          ".a-price-whole",
-          'span[data-csa-c-content-id="price"]',
-        ],
-        discount: [".basisPrice .a-offscreen", ".discount-price"],
-        rating: ["#acrPopover .a-size-base.a-color-base", ".rating-value"],
-        totalReviews: ["#acrCustomerReviewText", ".total-reviews"],
-        category: [
-          "#wayfinding-breadcrumbs_feature_div ul > li:first-child a",
-          ".breadcrumb li:first-child a",
-        ],
+        title: ["span#productTitle"],
+        rating: ["#acrPopover a > span", "#acrPopover"],
+        totalReviews: ["#acrCustomerReviewText"],
+        imageUrl: ["img#landingImage", 'meta[property="og:image"]'],
+        fullDescription: ["#productDescription", "#feature-bullets > ul"],
+        category: ["#wayfinding-breadcrumbs_feature_div ul > li:first-child a"],
         subcategory: [
           "#wayfinding-breadcrumbs_feature_div ul > li:last-child a",
-          ".breadcrumb li:last-child a",
         ],
-        availability: ["#availability span", ".stock-status"],
+        availability: ["#availability span"],
         deliveryTime: [
           "#mir-layout-DELIVERY_BLOCK-slot-PRIMARY_DELIVERY_MESSAGE_LARGE .a-text-bold",
-          ".delivery-date",
+          "[data-cy=delivery-recipe]",
         ],
-        returnPolicy: [
-          "#returns-policy",
-          '[data-csa-c-content-id="returns"]',
-          'a[href*="return"]',
-          "#RETURNS_POLICY span .a-text-normal",
+        serviceInfoText: [
+          "#icon-farm-container",
+          "#product-support-information",
         ],
-        warranty: [
-          "#warranty_feature_div",
-          'a[href*="warranty"]',
-          "#WARRANTY .a-text-normal",
+        reviewsMedleyText: ["#reviewsMedley"],
+        priceBlockText: [
+          "span#corePrice_feature_div .a-offscreen",
+          "span.priceToPay",
+          ".a-price > .a-offscreen",
+          ".a-price-whole",
+          ".a-price-fraction",
         ],
-        shippingCost: [
-          "#shipping-message .a-color-secondary",
-          ".shipping-cost",
+        discount: [
+          "span.basisPrice .a-offscreen",
+          ".priceBlockStrikePriceString",
+          ".aok-inline-block > .a-price > .a-offscreen",
         ],
-        imageUrl: [
-          "#landingImage",
-          "#main-image-container img",
-          'meta[property="og:image"]',
-        ],
-        fullDescription: ["#feature-bullets", "#productDescription"],
+        featureBullets: ["#feature-bullets ul > li"],
+        technicalDetails: ["#productDetails_techSpec_section_1 tr"],
+        brand: ["#bylineInfo"],
       };
 
       const extractedData: Record<string, any> = {};
@@ -97,24 +105,31 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Extract specifications from tables or lists
-      const specs: Record<string, string> = {};
-      document
-        .querySelectorAll(
-          "#productDetails_techSpec_section_1 tr, #detail-bullets_feature_div .a-list-item"
-        )
-        .forEach((el) => {
-          const text = el.textContent?.trim();
-          if (text && text.includes(":")) {
-            const [key, ...valueParts] = text.split(":");
-            specs[key.trim()] = valueParts.join(":").trim();
-          } else {
-            const key = el.querySelector("th")?.textContent?.trim();
-            const value = el.querySelector("td")?.textContent?.trim();
-            if (key && value) specs[key] = value;
-          }
-        });
-      extractedData.specifications = specs;
+      const topReviews = Array.from(
+        document.querySelectorAll('[data-hook="review-body"]')
+      )
+        .slice(1, 5)
+        .map((el) => el.textContent?.replace("Read more", "").trim() || "")
+        .filter(Boolean);
+      extractedData.topReviews = topReviews;
+
+      // const specs: Record<string, string> = {};
+      // document
+      //   .querySelectorAll(
+      //     "#productDetails_techSpec_section_1 tr, #detail-bullets_feature_div .a-list-item"
+      //   )
+      //   .forEach((el) => {
+      //     const text = el.textContent?.trim();
+      //     if (text && text.includes(":")) {
+      //       const [key, ...valueParts] = text.split(":");
+      //       specs[key.trim()] = valueParts.join(":").trim();
+      //     } else {
+      //       const key = el.querySelector("th")?.textContent?.trim();
+      //       const value = el.querySelector("td")?.textContent?.trim();
+      //       if (key && value) specs[key] = value;
+      //     }
+      //   });
+      // extractedData.specifications = specs;
 
       return extractedData;
     });
@@ -122,17 +137,21 @@ export async function POST(req: NextRequest) {
     await browser.close();
 
     if (!data.title) {
-      throw new Error(
-        "Could not extract product title. The page might not be a valid product page."
-      );
+      throw new Error("Could not extract product title.");
     }
+
+    data.scrapedAt = new Date().toISOString();
 
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("Scraping error:", error);
-    return NextResponse.json(
-      { error: error.message || "An unknown error occurred during scraping." },
-      { status: 500 }
-    );
+    let errorMessage = "An unknown error occurred during scraping.";
+    if (error.name === "TimeoutError") {
+      errorMessage =
+        "The request timed out. The website may be slow to respond or is blocking the request.";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
