@@ -396,10 +396,7 @@ export default function App() {
     setActiveProduct(null);
 
     try {
-      const route =
-        process.env.NODE_ENV === "production"
-          ? "/api/scrape-prod"
-          : "/api/scrape";
+      const route = "/api/scrape";
 
       const response = await fetch(route, {
         method: "POST",
