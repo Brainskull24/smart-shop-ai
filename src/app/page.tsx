@@ -396,7 +396,12 @@ export default function App() {
     setActiveProduct(null);
 
     try {
-      const response = await fetch("/api/scrape", {
+      const url =
+        process.env.NODE_ENV === "production"
+          ? "/api/scrape-prod"
+          : "/api/scrape";
+
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
