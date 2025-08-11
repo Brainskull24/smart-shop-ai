@@ -12,8 +12,7 @@
     "@sparticuz/chromium": "^138.0.2",
     "cheerio": "^1.1.2",
     "next": "15.4.6",
-    "puppeteer": "^24.16.1",
-    "puppeteer-core": "^10.1.0",
+    "puppeteer-core": "^24.16.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "zustand": "^5.0.7"

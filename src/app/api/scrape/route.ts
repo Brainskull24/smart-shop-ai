@@ -7,7 +7,7 @@ const getLaunchOptions = async () => {
     return {
       args: chromium.args,
       executablePath: await chromium.executablePath(),
-      headless: true,
+      headless: "new",
     };
   } else {
     const localChromePath =
@@ -15,7 +15,7 @@ const getLaunchOptions = async () => {
     return {
       args: [],
       executablePath: localChromePath,
-      headless: true,
+      headless: "new",
     };
   }
 };
@@ -34,9 +34,12 @@ export async function POST(req: NextRequest) {
       );
     }
     const options = await getLaunchOptions();
-    const browser = await puppeteer.launch(options);
+    const browser = await puppeteer.launch(options as any);
 
     const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+    );
     await page.setRequestInterception(true);
     page.setDefaultTimeout(20000);
 
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
 
     await page.evaluate(() => {
       const readMoreLinks = document.querySelectorAll(
