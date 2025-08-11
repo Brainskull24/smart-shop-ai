@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chrome from "chrome-aws-lambda";
 const getLaunchOptions = async () => {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.VERCEL_ENV === "production") {
     return {
       args: chrome.args,
       executablePath: await chrome.executablePath,
