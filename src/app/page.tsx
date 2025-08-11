@@ -1,6 +1,18 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { usePuter } from "@/store/puter";
+import {
+  HistoryItem,
+  RefinedData,
+  ScrapedData,
+  ProductData,
+} from "@/types/product";
+import { createProductSummaryPrompt } from "@/lib/prompts";
+import {
+  AMAZON_URL_PREFIX,
+  INVALID_URL_ERROR,
+  SIGN_IN_PROMPT,
+} from "@/lib/constants";
 
 const DetailItem = ({
   label,
@@ -14,8 +26,9 @@ const DetailItem = ({
     value === "Not found" ||
     value.trim() === "" ||
     value === "Not specified"
-  )
+  ) {
     return null;
+  }
   return (
     <div>
       <p className="text-sm text-gray-400">{label}</p>
@@ -34,7 +47,7 @@ const RatingsChart = ({ breakdown }: { breakdown: Record<string, string> }) => {
           <div className="w-4/5 bg-gray-700 rounded-full h-2.5">
             <div
               className="bg-yellow-400 h-2.5 rounded-full"
-              style={{ width: `${percentage}` }}
+              style={{ width: percentage }}
             ></div>
           </div>
           <span className="w-10 text-right text-gray-400">{percentage}</span>
@@ -46,7 +59,7 @@ const RatingsChart = ({ breakdown }: { breakdown: Record<string, string> }) => {
 
 const ReviewComment = ({ comment }: { comment: string }) => (
   <blockquote className="border-l-4 border-purple-500 pl-4 text-sm text-gray-300 italic">
-    "{comment}"
+    &quot;{comment}&quot;
   </blockquote>
 );
 
@@ -111,26 +124,23 @@ const AuthComponent = () => {
 const HistoryComponent = ({
   onSelectHistory,
 }: {
-  onSelectHistory: (item: any) => void;
+  onSelectHistory: (item: HistoryItem) => void;
 }) => {
   const { history, isAuthenticated, fetchHistory } = usePuter();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch history when component mounts if authenticated
   useEffect(() => {
     if (isAuthenticated && window.puter) {
       fetchHistory();
     }
   }, [isAuthenticated, fetchHistory]);
 
-  // Re-fetch history when tab becomes visible (handles tab switching)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && isAuthenticated && window.puter) {
         fetchHistory();
       }
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -167,19 +177,18 @@ const HistoryComponent = ({
             isRefreshing ? "animate-spin" : ""
           }`}
           disabled={isRefreshing}
-          title="Refresh history from cloud storage"
+          title="Refresh history"
+          aria-label="Refresh history"
         >
           ↻
         </button>
       </div>
-
       <div className="mb-2 text-xs text-gray-500">
         Stored in Puter Cloud • {history.length} items
       </div>
-
       {history.length > 0 ? (
         <ul className="space-y-2 max-h-96 overflow-y-auto">
-          {history.map((item, index) => (
+          {history.map((item: HistoryItem, index: number) => (
             <li key={`${item.scrapedAt}-${index}`}>
               <button
                 onClick={() => onSelectHistory(item)}
@@ -227,7 +236,7 @@ const ProductCard = ({
   sourceUrl,
   scrapedAt,
 }: {
-  data: any;
+  data: ProductData;
   sourceUrl: string;
   scrapedAt: string;
 }) => {
@@ -346,44 +355,44 @@ const ProductCard = ({
   );
 };
 
+const getFriendlyErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    if (error.message.includes("Failed to scrape")) {
+      return "Could not fetch data from the URL. The product might be unavailable or the link is incorrect.";
+    }
+    if (error.message.includes("valid JSON object")) {
+      return "AI failed to process the product data. The page format may be unsupported. Please try another link.";
+    }
+    return error.message;
+  }
+  return "An unexpected error occurred.";
+};
+
 export default function App() {
   const { init, isAuthenticated, ai, addToHistory, isLoading, fetchHistory } =
     usePuter();
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeProduct, setActiveProduct] = useState<any | null>(null);
+  const [activeProduct, setActiveProduct] = useState<HistoryItem | null>(null);
 
   useEffect(() => {
     init();
   }, [init]);
 
-  // Handle page visibility changes to refresh history
-  useEffect(() => {
-    const handleFocus = () => {
-      if (isAuthenticated && window.puter) {
-        fetchHistory();
-      }
-    };
+  const handleSelectHistory = (item: HistoryItem) => {
+    setActiveProduct(item);
+    setError(null);
+  };
 
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [isAuthenticated, fetchHistory]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!isAuthenticated) {
-      setError("Please sign in to use the app.");
-      return;
-    }
-    if (!url.startsWith("https://www.amazon.in")) {
-      setError("Invalid URL. Please use a valid link from amazon.in.");
-      return;
-    }
+    if (!isAuthenticated) return setError(SIGN_IN_PROMPT);
+    if (!url.startsWith(AMAZON_URL_PREFIX)) return setError(INVALID_URL_ERROR);
 
-    setLoading(true);
+    setIsSubmitting(true);
     setActiveProduct(null);
 
     try {
@@ -398,102 +407,40 @@ export default function App() {
         throw new Error(errorData.error || "Failed to scrape.");
       }
 
-      const scrapedData = await response.json();
-
-      const requiredFields = [
-        "title",
-        "priceBlockText",
-        "topReviews",
-        "reviewsMedleyText",
-        "fullDescription",
-        "serviceInfoText",
-        "featureBullets",
-        "technicalDetails",
-      ];
-
-      const dataForAI = requiredFields.reduce(
-        (acc, field) => {
-          if (scrapedData[field]) acc[field] = scrapedData[field];
-          return acc;
-        },
-        { ...scrapedData, scrapedAt: new Date().toISOString() }
-      );
-
-      const prompt = `You are a data processing expert. Your only job is to populate a JSON object based on the provided raw data.
-          **Instructions:**
-            1.  Your entire response **MUST** be a single, valid JSON object.
-            2.  **Title:** From the raw 'title', create a short, crisp, and clean title.
-            3.  **Price & Discount:** Analyze the 'priceBlockText' blob to find the main 'price'. Use the directly provided 'discount' field if it exists.
-            4.  **Review Summary:** Analyze the 'topReviews' array, which contains full user comments, and create a concise, one-paragraph summary of the common themes.
-            5.  **Ratings Breakdown:** Analyze the 'reviewsMedleyText' blob and extract the percentage for each star rating into a JSON object.
-            6.  **Key Features:** Analyze the 'fullDescription' and create an array of 3-5 short, concise features (4-6 words each).
-            7.  **Return/Warranty:** Analyze the 'serviceInfoText' to find 'returnPolicy' and 'warranty'. If not found, set the value to "Not specified".
-            8.  **Replacement:** Analyze the 'serviceInfoText' to find 'replacementinfo'. If not found, set the value to "Not specified".
-            9.  For all other fields, extract them from the provided data. If a field is not present, omit its key from the final JSON.
-          ---
-          **Raw Data to Process:**
-          ${JSON.stringify(dataForAI, null, 2)}
-
-          --------------------
-
-          **JSON Response Format:**
-          {
-            "title": "Your processed title here",
-            "price": "₹1234",
-            "discount": "₹200",
-            "reviewSummary": "A concise summary of user reviews.",
-            "ratingsBreakdown": {
-              "5 stars": "80%",
-              "4 stars": "10%",
-              "3 stars": "5%",
-              "2 stars": "3%",
-              "1 star": "2%"
-            },
-            "keyFeatures": ["Feature 1", "Feature 2", ...],
-            "returnPolicy": "30 days return policy",
-            "warranty": "1 year warranty",
-            "replacementinfo": "Not specified"
-          }`;
-
+      const scrapedData: ScrapedData = await response.json();
+      const dataForAI = { ...scrapedData, scrapedAt: new Date().toISOString() };
+      const prompt = createProductSummaryPrompt(dataForAI);
       const aiResponse = await ai.chat(prompt, { model: "gpt-4o-mini" });
-      if (!aiResponse) throw new Error("AI did not return any response.");
 
-      let responseText = "";
-      if (typeof aiResponse === "string") responseText = aiResponse;
-      else if (typeof aiResponse === "object" && aiResponse !== null)
-        responseText =
-          aiResponse.message?.content || JSON.stringify(aiResponse);
-      else throw new Error("AI returned an unexpected data format.");
+      if (!aiResponse?.message?.content) {
+        throw new Error("AI did not return a valid response.");
+      }
 
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("AI did not return a valid JSON object.");
+      const jsonMatch = aiResponse.message.content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("AI did not return a valid JSON object.");
+      }
 
-      const refinedJson = JSON.parse(jsonMatch[0]);
-      const finalData = { ...scrapedData, ...refinedJson };
-
-      const productData = {
-        refinedData: finalData,
+      const refinedJson: RefinedData = JSON.parse(jsonMatch[0]);
+      const productData: HistoryItem = {
+        refinedData: { ...scrapedData, ...refinedJson },
         sourceUrl: url,
         scrapedAt: dataForAI.scrapedAt,
       };
 
       setActiveProduct(productData);
-
-      // Add to Puter KV storage (this will also update local state)
       await addToHistory(productData);
-
-      // Clear the URL input after successful processing
       setUrl("");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getFriendlyErrorMessage(err));
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
         <div className="animate-spin rounded-full h-24 w-24 border-b-2 border-purple-400"></div>
       </div>
     );
@@ -515,30 +462,35 @@ export default function App() {
         </header>
 
         <div className="flex flex-col md:flex-row gap-8">
-          <HistoryComponent onSelectHistory={setActiveProduct} />
+          <HistoryComponent onSelectHistory={handleSelectHistory} />
           <main className="flex-grow">
             <form
               onSubmit={handleSubmit}
               className="flex flex-col sm:flex-row gap-3 mb-8"
             >
               <div className="relative flex-grow">
+                <label htmlFor="product-url" className="sr-only">
+                  Product URL
+                </label>
                 <input
+                  id="product-url"
                   type="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder={
                     isAuthenticated
-                      ? "https://www.amazon.in/product-url"
+                      ? `${AMAZON_URL_PREFIX}/product-url`
                       : "Please sign in to start"
                   }
                   className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors disabled:cursor-not-allowed"
-                  disabled={!isAuthenticated || loading}
+                  disabled={!isAuthenticated || isSubmitting}
                 />
                 {url && (
                   <button
                     type="button"
                     onClick={() => setUrl("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    aria-label="Clear input"
                   >
                     &#x2715;
                   </button>
@@ -546,15 +498,15 @@ export default function App() {
               </div>
               <button
                 type="submit"
-                disabled={!isAuthenticated || loading}
+                disabled={!isAuthenticated || isSubmitting || !url}
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all"
               >
-                {loading ? "Analyzing..." : "Get Summary"}
+                {isSubmitting ? "Analyzing..." : "Get Summary"}
               </button>
             </form>
 
-            {loading && (
-              <div className="text-center">
+            {isSubmitting && (
+              <div className="text-center p-10">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto"></div>
                 <p className="mt-4 text-gray-400">Fetching and refining...</p>
               </div>
@@ -570,7 +522,7 @@ export default function App() {
               </div>
             )}
 
-            {!loading && !activeProduct && !error && <EmptyState />}
+            {!isSubmitting && !activeProduct && !error && <EmptyState />}
 
             {activeProduct && (
               <div className="mt-8">

@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         brand: ["#bylineInfo"],
       };
 
-      const extractedData: Record<string, any> = {};
+      const extractedData: Record<string, unknown> = {};
 
       for (const [key, potentialSelectors] of Object.entries(selectors)) {
         for (const selector of potentialSelectors) {
@@ -105,12 +105,25 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const maxLength = 600;
+
+      function truncateWithEllipsis(text: string, maxLen: number) {
+        if (text.length <= maxLen) return text;
+        return text.slice(0, maxLen).trimEnd() + "...";
+      }
+
       const topReviews = Array.from(
         document.querySelectorAll('[data-hook="review-body"]')
       )
         .slice(1, 5)
-        .map((el) => el.textContent?.replace("Read more", "").trim() || "")
+        .map((el) =>
+          truncateWithEllipsis(
+            el.textContent?.replace("Read more", "").trim() || "",
+            maxLength
+          )
+        )
         .filter(Boolean);
+
       extractedData.topReviews = topReviews;
 
       // const specs: Record<string, string> = {};
