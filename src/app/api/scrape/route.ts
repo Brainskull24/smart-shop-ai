@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chrome from "chrome-aws-lambda";
+import chromium from "@sparticuz/chromium";
+
 const getLaunchOptions = async () => {
   if (process.env.VERCEL_ENV === "production") {
     return {
-      args: chrome.args,
-      executablePath: await chrome.executablePath,
-      headless: chrome.headless,
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
     };
   } else {
     const localChromePath =
