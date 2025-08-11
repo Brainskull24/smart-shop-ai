@@ -1,5 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chrome from "chrome-aws-lambda";
+const getLaunchOptions = async () => {
+  if (process.env.NODE_ENV === "production") {
+    return {
+      args: chrome.args,
+      executablePath: await chrome.executablePath,
+      headless: chrome.headless,
+    };
+  } else {
+    const localChromePath =
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+    return {
+      args: [],
+      executablePath: localChromePath,
+      headless: true,
+    };
+  }
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,12 +32,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      timeout: 20000,
-    });
+    const options = await getLaunchOptions();
+    const browser = await puppeteer.launch(options);
 
     const page = await browser.newPage();
     await page.setRequestInterception(true);
