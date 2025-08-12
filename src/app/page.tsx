@@ -244,7 +244,7 @@ const ProductCard = ({
     <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
       <div className="flex flex-col md:flex-row">
         {data.imageUrl && (
-          <div className="md:w-1/3 flex-shrink-0 p-4 flex items-center justify-center bg-gray-800/20">
+          <div className="md:w-2/5 flex-shrink-0 p-4 flex items-center justify-center bg-gray-800/20">
             <img
               src={data.imageUrl}
               alt={data.title || "Product Image"}
@@ -279,7 +279,7 @@ const ProductCard = ({
               </span>
             )}
           </div>
-          {data.keyFeatures && data.keyFeatures.length > 0 && (
+          {/* {data.keyFeatures && data.keyFeatures.length > 0 && (
             <div className="mb-6">
               <h3 className="font-semibold text-lg text-gray-200 mb-3">
                 Key Features
@@ -289,6 +289,28 @@ const ProductCard = ({
                   <li key={i}>{feature}</li>
                 ))}
               </ul>
+            </div>
+          )} */}
+          {data.specs && Object.keys(data.specs).length > 0 && (
+            <div>
+              <h3 className="font-semibold text-lg text-gray-200 mb-3">
+                Technical Specifications
+              </h3>
+              <div className="text-sm border border-gray-700 rounded-lg">
+                {Object.entries(data.specs).map(([key, value], index) => (
+                  <div
+                    key={key}
+                    className={`flex justify-between p-3 ${
+                      index !== Object.keys(data.specs).length - 1
+                        ? "border-b border-gray-700"
+                        : ""
+                    }`}
+                  >
+                    <span className="font-medium text-gray-400">{key}</span>
+                    <span className="text-right text-gray-200">{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -309,18 +331,7 @@ const ProductCard = ({
           <RatingsChart breakdown={data.ratingsBreakdown} />
         </div>
       </div>
-      {data.topReviews && data.topReviews.length > 0 && (
-        <div className="p-6 md:p-8 border-t border-gray-700">
-          <h3 className="font-semibold text-lg text-gray-200 mb-4">
-            Top User Comments
-          </h3>
-          <div className="space-y-4">
-            {data.topReviews.map((comment: string, i: number) => (
-              <ReviewComment key={i} comment={comment} />
-            ))}
-          </div>
-        </div>
-      )}
+
       <div className="p-6 md:p-8 border-t border-gray-700">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 text-sm">
           <DetailItem label="Category" value={data.category} />
@@ -339,6 +350,18 @@ const ProductCard = ({
           <DetailItem label="Delivery Time" value={data.deliveryTime} />
         </div>
       </div>
+      {data.topReviews && data.topReviews.length > 0 && (
+        <div className="p-6 md:p-8 border-t border-gray-700">
+          <h3 className="font-semibold text-lg text-gray-200 mb-4">
+            Top User Comments
+          </h3>
+          <div className="space-y-4">
+            {data.topReviews.map((comment: string, i: number) => (
+              <ReviewComment key={i} comment={comment} />
+            ))}
+          </div>
+        </div>
+      )}
       <div className="px-6 py-3 bg-gray-900/50 text-center text-xs text-gray-500">
         Data from{" "}
         <a
@@ -414,6 +437,8 @@ export default function App() {
       }
 
       const scrapedData: ScrapedData = await response.json();
+
+      console.log("Scraped Data:", scrapedData);
       const dataForAI = { ...scrapedData, scrapedAt: new Date().toISOString() };
       const prompt = createProductSummaryPrompt(dataForAI);
 
@@ -459,7 +484,7 @@ export default function App() {
 
   return (
     <div className="bg-gray-900 min-h-screen text-white font-sans flex flex-col items-center p-4 sm:p-8">
-      <div className="w-full max-w-7xl mx-auto">
+      <div className="w-full max-w-6xl mx-auto">
         <header className="flex justify-between items-center mb-10">
           <div className="text-left">
             <h1 className="text-2xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
@@ -473,7 +498,7 @@ export default function App() {
         </header>
 
         <div className="flex flex-col md:flex-row gap-8">
-          <HistoryComponent onSelectHistory={handleSelectHistory} />
+          {/* <HistoryComponent onSelectHistory={handleSelectHistory} /> */}
           <main className="flex-grow">
             <form
               onSubmit={handleSubmit}

@@ -162,7 +162,11 @@ export async function POST(req: NextRequest) {
           ".priceBlockStrikePriceString",
           ".aok-inline-block > .a-price > .a-offscreen",
         ],
-        featureBullets: ["#feature-bullets ul > li"],
+        featureBullets: [
+          "#feature-bullets ul > li",
+          "#detailBullets_feature_div",
+          "#productDetails_techSpec_section_1 tr",
+        ],
         technicalDetails: ["#productDetails_techSpec_section_1 tr"],
         brand: ["#bylineInfo"],
       };
@@ -205,23 +209,23 @@ export async function POST(req: NextRequest) {
 
       extractedData.topReviews = topReviews;
 
-      // const specs: Record<string, string> = {};
-      // document
-      //   .querySelectorAll(
-      //     "#productDetails_techSpec_section_1 tr, #detail-bullets_feature_div .a-list-item"
-      //   )
-      //   .forEach((el) => {
-      //     const text = el.textContent?.trim();
-      //     if (text && text.includes(":")) {
-      //       const [key, ...valueParts] = text.split(":");
-      //       specs[key.trim()] = valueParts.join(":").trim();
-      //     } else {
-      //       const key = el.querySelector("th")?.textContent?.trim();
-      //       const value = el.querySelector("td")?.textContent?.trim();
-      //       if (key && value) specs[key] = value;
-      //     }
-      //   });
-      // extractedData.specifications = specs;
+      const specs: Record<string, string> = {};
+      document
+        .querySelectorAll(
+          "#productDetails_techSpec_section_1 tr, #detail-bullets_feature_div .a-list-item, #detailBullets_feature_div .a-list-item"
+        )
+        .forEach((el) => {
+          const text = el.textContent?.trim();
+          if (text && text.includes(":")) {
+            const [key, ...valueParts] = text.split(":");
+            specs[key.trim()] = valueParts.join(":").trim();
+          } else {
+            const key = el.querySelector("th")?.textContent?.trim();
+            const value = el.querySelector("td")?.textContent?.trim();
+            if (key && value) specs[key] = value;
+          }
+        });
+      extractedData.specifications = specs;
 
       return extractedData;
     });
