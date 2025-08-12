@@ -6,7 +6,7 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ShopSense AI",
+  title: "SmartShop AI",
   description: "Get AI-powered insights on any e-commerce product.",
 };
 

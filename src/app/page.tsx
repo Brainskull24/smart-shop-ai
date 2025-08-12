@@ -66,10 +66,10 @@ const ReviewComment = ({ comment }: { comment: string }) => (
 const EmptyState = () => (
   <div className="text-center p-10 border-2 border-dashed border-gray-700 rounded-2xl mt-8">
     <h2 className="text-xl font-semibold text-gray-300">
-      Welcome to Smart Product Summary
+      Welcome to SmartShop AI
     </h2>
     <p className="text-gray-500 mt-2">
-      Sign in to begin, then paste an Amazon.in product link.
+      Paste an Amazon.in product link to get started!.
     </p>
     <p className="text-purple-400 text-3xl mt-4">🛍️</p>
   </div>
@@ -516,7 +516,7 @@ export default function App() {
                   placeholder={
                     isAuthenticated
                       ? `${AMAZON_URL_PREFIX}/product-url`
-                      : "Please sign in to start"
+                      : "Sign in to get started!"
                   }
                   className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors disabled:cursor-not-allowed"
                   disabled={!isAuthenticated || isSubmitting}
