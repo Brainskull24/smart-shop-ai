@@ -121,115 +121,115 @@ const AuthComponent = () => {
   );
 };
 
-const HistoryComponent = ({
-  onSelectHistory,
-}: {
-  onSelectHistory: (item: HistoryItem) => void;
-}) => {
-  const { history, isAuthenticated, fetchHistory } = usePuter();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+// const HistoryComponent = ({
+//   onSelectHistory,
+// }: {
+//   onSelectHistory: (item: HistoryItem) => void;
+// }) => {
+//   const { history, isAuthenticated, fetchHistory } = usePuter();
+//   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated && window.puter) {
-      fetchHistory();
-    }
-  }, [isAuthenticated, fetchHistory]);
+//   useEffect(() => {
+//     if (isAuthenticated && window.puter) {
+//       fetchHistory();
+//     }
+//   }, [isAuthenticated, fetchHistory]);
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && isAuthenticated && window.puter) {
-        fetchHistory();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [isAuthenticated, fetchHistory]);
+//   useEffect(() => {
+//     const handleVisibilityChange = () => {
+//       if (!document.hidden && isAuthenticated && window.puter) {
+//         fetchHistory();
+//       }
+//     };
+//     document.addEventListener("visibilitychange", handleVisibilityChange);
+//     return () =>
+//       document.removeEventListener("visibilitychange", handleVisibilityChange);
+//   }, [isAuthenticated, fetchHistory]);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="w-full md:w-72 flex-shrink-0 bg-gray-800/50 p-4 rounded-2xl border border-gray-700">
-        <h3 className="font-semibold text-gray-200 mb-3">Search History</h3>
-        <p className="text-sm text-gray-500">
-          Sign in to view your search history.
-        </p>
-      </div>
-    );
-  }
+//   if (!isAuthenticated) {
+//     return (
+//       <div className="w-full md:w-72 flex-shrink-0 bg-gray-800/50 p-4 rounded-2xl border border-gray-700">
+//         <h3 className="font-semibold text-gray-200 mb-3">Search History</h3>
+//         <p className="text-sm text-gray-500">
+//           Sign in to view your search history.
+//         </p>
+//       </div>
+//     );
+//   }
 
-  const handleRefresh = async () => {
-    if (isRefreshing) return;
-    setIsRefreshing(true);
-    try {
-      await fetchHistory();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+//   const handleRefresh = async () => {
+//     if (isRefreshing) return;
+//     setIsRefreshing(true);
+//     try {
+//       await fetchHistory();
+//     } finally {
+//       setIsRefreshing(false);
+//     }
+//   };
 
-  return (
-    <div className="w-full md:w-72 flex-shrink-0 bg-gray-800/50 p-4 rounded-2xl border border-gray-700">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="font-semibold text-gray-200">Search History</h3>
-        <button
-          onClick={handleRefresh}
-          className={`text-xs text-purple-400 hover:text-purple-300 p-1 rounded transition-all ${
-            isRefreshing ? "animate-spin" : ""
-          }`}
-          disabled={isRefreshing}
-          title="Refresh history"
-          aria-label="Refresh history"
-        >
-          ↻
-        </button>
-      </div>
-      <div className="mb-2 text-xs text-gray-500">
-        Stored in Puter Cloud • {history.length} items
-      </div>
-      {history.length > 0 ? (
-        <ul className="space-y-2 max-h-96 overflow-y-auto">
-          {history.map((item: HistoryItem, index: number) => (
-            <li key={`${item.scrapedAt}-${index}`}>
-              <button
-                onClick={() => onSelectHistory(item)}
-                className="text-left text-sm text-purple-300 hover:underline w-full p-2 rounded-md hover:bg-gray-700/50 transition-colors group"
-              >
-                <div className="space-y-1">
-                  <p className="font-semibold truncate group-hover:text-purple-200">
-                    {item.refinedData?.title || "Untitled Product"}
-                  </p>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-400">
-                      {item.refinedData?.price || "No price"}
-                    </span>
-                    <span className="text-gray-500">
-                      {item.scrapedAt
-                        ? new Date(item.scrapedAt).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                          })
-                        : "No date"}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : isRefreshing ? (
-        <div className="flex items-center justify-center p-4 text-gray-400">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2"></div>
-          Loading...
-        </div>
-      ) : (
-        <div className="space-y-2 text-center text-gray-500">
-          <p className="text-sm">Your past searches will appear here.</p>
-          <p className="text-xs">Data is stored securely in Puter Cloud</p>
-        </div>
-      )}
-    </div>
-  );
-};
+//   return (
+//     <div className="w-full md:w-72 flex-shrink-0 bg-gray-800/50 p-4 rounded-2xl border border-gray-700">
+//       <div className="flex justify-between items-center mb-3">
+//         <h3 className="font-semibold text-gray-200">Search History</h3>
+//         <button
+//           onClick={handleRefresh}
+//           className={`text-xs text-purple-400 hover:text-purple-300 p-1 rounded transition-all ${
+//             isRefreshing ? "animate-spin" : ""
+//           }`}
+//           disabled={isRefreshing}
+//           title="Refresh history"
+//           aria-label="Refresh history"
+//         >
+//           ↻
+//         </button>
+//       </div>
+//       <div className="mb-2 text-xs text-gray-500">
+//         Stored in Puter Cloud • {history.length} items
+//       </div>
+//       {history.length > 0 ? (
+//         <ul className="space-y-2 max-h-96 overflow-y-auto">
+//           {history.map((item: HistoryItem, index: number) => (
+//             <li key={`${item.scrapedAt}-${index}`}>
+//               <button
+//                 onClick={() => onSelectHistory(item)}
+//                 className="text-left text-sm text-purple-300 hover:underline w-full p-2 rounded-md hover:bg-gray-700/50 transition-colors group"
+//               >
+//                 <div className="space-y-1">
+//                   <p className="font-semibold truncate group-hover:text-purple-200">
+//                     {item.refinedData?.title || "Untitled Product"}
+//                   </p>
+//                   <div className="flex justify-between items-center text-xs">
+//                     <span className="text-gray-400">
+//                       {item.refinedData?.price || "No price"}
+//                     </span>
+//                     <span className="text-gray-500">
+//                       {item.scrapedAt
+//                         ? new Date(item.scrapedAt).toLocaleDateString("en-IN", {
+//                             day: "numeric",
+//                             month: "short",
+//                           })
+//                         : "No date"}
+//                     </span>
+//                   </div>
+//                 </div>
+//               </button>
+//             </li>
+//           ))}
+//         </ul>
+//       ) : isRefreshing ? (
+//         <div className="flex items-center justify-center p-4 text-gray-400">
+//           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2"></div>
+//           Loading...
+//         </div>
+//       ) : (
+//         <div className="space-y-2 text-center text-gray-500">
+//           <p className="text-sm">Your past searches will appear here.</p>
+//           <p className="text-xs">Data is stored securely in Puter Cloud</p>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
 
 const ProductCard = ({
   data,
@@ -242,13 +242,13 @@ const ProductCard = ({
 }) => {
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
-      <div className="flex flex-col md:flex-row">
+      <div className="flex flex-col md:flex-row w-full justify-between">
         {data.imageUrl && (
-          <div className="md:w-2/5 flex-shrink-0 p-4 flex items-center justify-center bg-gray-800/20">
+          <div className="md:w-1/2 flex-shrink-0 p-4 flex items-center justify-center bg-gray-800/20">
             <img
               src={data.imageUrl}
               alt={data.title || "Product Image"}
-              className="object-contain w-full h-auto max-h-[400px] md:max-h-[500px] rounded-lg"
+              className="object-contain w-4/5 h-auto max-h-[400px] md:max-h-[500px] rounded-lg"
               onError={(e) => (e.currentTarget.style.display = "none")}
             />
           </div>
@@ -292,7 +292,7 @@ const ProductCard = ({
             </div>
           )} */}
           {data.specs && Object.keys(data.specs).length > 0 && (
-            <div>
+            <div className="">
               <h3 className="font-semibold text-lg text-gray-200 mb-3">
                 Technical Specifications
               </h3>
@@ -484,7 +484,7 @@ export default function App() {
 
   return (
     <div className="bg-gray-900 min-h-screen text-white font-sans flex flex-col items-center p-4 sm:p-8">
-      <div className="w-full max-w-6xl mx-auto">
+      <div className="w-full max-w-5xl mx-auto">
         <header className="flex justify-between items-center mb-10">
           <div className="text-left">
             <h1 className="text-2xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">

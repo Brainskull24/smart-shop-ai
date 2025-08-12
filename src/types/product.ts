@@ -41,7 +41,7 @@ export interface RefinedData {
   returnPolicy: string;
   warranty: string;
   replacementinfo: string;
-  specs: Record<string, string>; 
+  specs: Record<string, string>;
 }
 
 export type ProductData = ScrapedData & RefinedData;
