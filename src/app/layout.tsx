@@ -6,7 +6,7 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Product Insights AI",
+  title: "ShopSense AI",
   description: "Get AI-powered insights on any e-commerce product.",
 };
 
@@ -17,6 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* <link rel="icon" href="icon.png" type="image/png" /> */}
+      </head>
       <body className={inter.className}>
         {children}
         <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />

@@ -398,11 +398,15 @@ export default function App() {
     try {
       const route = "/api/scrape";
 
+      console.log("Time before fetch:", new Date().toISOString());
+
       const response = await fetch(route, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
+
+      console.log("Time after fetch:", new Date().toISOString());
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -412,7 +416,12 @@ export default function App() {
       const scrapedData: ScrapedData = await response.json();
       const dataForAI = { ...scrapedData, scrapedAt: new Date().toISOString() };
       const prompt = createProductSummaryPrompt(dataForAI);
+
+      console.log("Time before AI Request:", new Date().toISOString());
+
       const aiResponse = await ai.chat(prompt, { model: "gpt-4o-mini" });
+
+      console.log("Time after AI Request:", new Date().toISOString());
 
       if (!aiResponse?.message?.content) {
         throw new Error("AI did not return a valid response.");
