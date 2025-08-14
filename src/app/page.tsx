@@ -121,6 +121,400 @@ const AuthComponent = () => {
   );
 };
 
+const ProductCard = ({
+  data,
+  sourceUrl,
+  scrapedAt,
+}: {
+  data: ProductData;
+  sourceUrl: string;
+  scrapedAt: string;
+}) => {
+  return (
+    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
+      <div className="flex flex-col md:flex-row w-full justify-between">
+        {data.imageUrl && (
+          <div className="md:w-1/2 flex-shrink-0 p-4 flex items-center justify-center bg-gray-800/20">
+            <img
+              src={data.imageUrl}
+              alt={data.title || "Product Image"}
+              className="object-contain w-4/5 h-auto max-h-[400px] md:max-h-[500px] rounded-lg"
+              onError={(e) => (e.currentTarget.style.display = "none")}
+            />
+          </div>
+        )}
+        <div className="p-6 md:p-8 flex-grow">
+          <h2 className="text-2xl font-bold text-purple-300 mb-2">
+            {data.title}
+          </h2>
+          <div className="flex items-center gap-4 mb-4">
+            <DetailItem label="Brand" value={data.brand} />
+            <DetailItem label="Model" value={data.modelNumber} />
+          </div>
+          <div className="flex items-baseline gap-3 mb-4">
+            <p className="text-3xl font-bold text-green-400">{data.price}</p>
+            {data.discount && (
+              <p className="text-red-400 line-through">{data.discount}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-4 text-sm text-gray-400 mb-6">
+            {data.rating && (
+              <span>
+                ⭐ {data.rating} ({data.totalReviews} reviews)
+              </span>
+            )}
+            {data.availability && (
+              <span className="bg-green-800/50 text-green-300 px-2 py-1 rounded-md">
+                {data.availability}
+              </span>
+            )}
+          </div>
+          {data.specs && Object.keys(data.specs).length > 0 && (
+            <div className="">
+              <h3 className="font-semibold text-lg text-gray-200 mb-3">
+                Technical Specifications
+              </h3>
+              <div className="text-sm border border-gray-700 rounded-lg">
+                {Object.entries(data.specs).map(([key, value], index) => (
+                  <div
+                    key={key}
+                    className={`flex justify-between p-3 ${
+                      index !== Object.keys(data.specs).length - 1
+                        ? "border-b border-gray-700"
+                        : ""
+                    }`}
+                  >
+                    <span className="font-medium text-gray-400">{key}</span>
+                    <span className="text-right text-gray-200">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="p-6 md:p-8 border-t border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h3 className="font-semibold text-lg text-gray-200 mb-3">
+            What Users Say
+          </h3>
+          <p className="text-gray-300 text-sm">
+            {data.reviewSummary || "No review summary available."}
+          </p>
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg text-gray-200 mb-3">
+            Ratings Breakdown
+          </h3>
+          <RatingsChart breakdown={data.ratingsBreakdown} />
+        </div>
+      </div>
+
+      <div className="p-6 md:p-8 border-t border-gray-700">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+          <DetailItem label="Category" value={data.category} />
+          <DetailItem label="Subcategory" value={data.subcategory} />
+          <DetailItem label="Color" value={data.specifications?.color} />
+          <DetailItem label="Material" value={data.specifications?.material} />
+          <DetailItem label="Size" value={data.specifications?.size} />
+          <DetailItem label="Weight" value={data.specifications?.weight} />
+          <DetailItem
+            label="Dimensions"
+            value={data.specifications?.dimensions}
+          />
+          <DetailItem
+            label="Power Source"
+            value={data.specifications?.powerSource}
+          />
+          <DetailItem
+            label="Battery Life"
+            value={data.specifications?.batteryLife}
+          />
+          <DetailItem
+            label="Compatibility"
+            value={data.specifications?.compatibility}
+          />
+          <DetailItem label="Warranty" value={data.warranty} />
+          <DetailItem label="Return Policy" value={data.returnPolicy} />
+          <DetailItem label="Delivery Time" value={data.deliveryTime} />
+          <DetailItem
+            label="Replacement Information"
+            value={data.replacementinfo}
+          />
+        </div>
+      </div>
+      {data.topReviews && data.topReviews.length > 0 && (
+        <div className="p-6 md:p-8 border-t border-gray-700">
+          <h3 className="font-semibold text-lg text-gray-200 mb-4">
+            Top User Comments
+          </h3>
+          <div className="space-y-4">
+            {data.topReviews.slice(0, 5).map((comment: string, i: number) => (
+              <ReviewComment key={i} comment={comment} />
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="px-6 py-3 bg-gray-900/50 text-center text-xs text-gray-500">
+        Data from{" "}
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+        >
+          {new URL(sourceUrl).hostname}
+        </a>
+        , fetched on {new Date(scrapedAt).toLocaleString("en-IN")}.
+      </div>
+    </div>
+  );
+};
+
+const getFriendlyErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    if (error.message.includes("Failed to scrape")) {
+      return "Could not fetch data from the URL. The product might be unavailable or the link is incorrect.";
+    }
+    if (error.message.includes("valid JSON object")) {
+      return "AI failed to process the product data. The page format may be unsupported. Please try another link.";
+    }
+    return error.message;
+  }
+  return "An unexpected error occurred.";
+};
+
+export default function App() {
+  const {
+    init,
+    isAuthenticated,
+    ai,
+    addToHistory,
+    isLoading,
+    kv,
+    fetchHistory,
+  } = usePuter();
+  const [url, setUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeProduct, setActiveProduct] = useState<HistoryItem | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    init();
+  }, [init]);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!isAuthenticated) return setError(SIGN_IN_PROMPT);
+    if (!url.startsWith(AMAZON_URL_PREFIX)) return setError(INVALID_URL_ERROR);
+
+    setIsSubmitting(true);
+    setActiveProduct(null);
+
+    try {
+      const cacheKey = `cache_${btoa(url)}`;
+      const cachedData = await kv.get(cacheKey);
+      const oneHour = 60 * 60 * 1000;
+
+      if (
+        cachedData &&
+        new Date().getTime() - new Date(cachedData.scrapedAt).getTime() <
+          oneHour
+      ) {
+        setActiveProduct(cachedData);
+        setIsSubmitting(false);
+        setUrl("");
+        return;
+      }
+      const route = "/api/scrape";
+
+      const response = await fetch(route, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to scrape.");
+      }
+
+      const scrapedData: ScrapedData = await response.json();
+      console.log("Scraped Data:", scrapedData);
+
+      const dataForAI = {
+        title: scrapedData.title,
+        priceBlockText: scrapedData.priceBlockText,
+        discount: scrapedData.discount,
+        fullDescription: scrapedData.fullDescription,
+        serviceInfoText: scrapedData.serviceInfoText,
+        specifications: scrapedData.specifications,
+      };
+      const prompt = createProductSummaryPrompt(dataForAI);
+
+      console.log("Time: ", new Date().toISOString());
+
+      const aiResponse = await ai.chat(prompt, { model: "gpt-4o-mini" });
+      console.log("AI Response:", aiResponse);
+
+      console.log("Time: ", new Date().toISOString());
+
+      if (!aiResponse?.message?.content) {
+        throw new Error("AI did not return a valid response.");
+      }
+
+      const jsonMatch = aiResponse.message.content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("AI did not return a valid JSON object.");
+      }
+
+      const refinedJson: RefinedData = JSON.parse(jsonMatch[0]);
+      const productData: HistoryItem = {
+        refinedData: { ...scrapedData, ...refinedJson },
+        sourceUrl: url,
+        scrapedAt: new Date().toISOString(),
+      };
+
+      setActiveProduct(productData);
+      setUrl("");
+
+      Promise.all([
+        kv.set(cacheKey, productData),
+        kv.set(`history_${productData.scrapedAt}`, productData),
+        addToHistory(productData),
+      ])
+        .then(() => {
+          fetchHistory();
+        })
+        .catch((err) => {
+          console.error("Failed to update cache or history:", err);
+        });
+    } catch (err: unknown) {
+      setError(getFriendlyErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="animate-spin rounded-full h-24 w-24 border-b-2 border-purple-400"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-900 min-h-screen text-white font-sans flex flex-col items-center p-4 sm:p-8">
+      <div className="w-full max-w-5xl mx-auto">
+        <header className="flex justify-between items-center mb-10">
+          <div className="text-left">
+            <h1 className="text-2xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+              Smart Product Summary
+            </h1>
+            <p className="text-gray-400 mt-1 text-sm sm:text-base">
+              Your AI-powered research assistant.
+            </p>
+          </div>
+          <AuthComponent />
+        </header>
+
+        <div className="flex flex-col md:flex-row gap-8">
+          <main className="flex-grow">
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col sm:flex-row gap-3 mb-8"
+            >
+              <div className="relative flex-grow">
+                <label htmlFor="product-url" className="sr-only">
+                  Product URL
+                </label>
+                <input
+                  id="product-url"
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder={
+                    isAuthenticated
+                      ? `${AMAZON_URL_PREFIX}/product-url`
+                      : "Sign in to get started!"
+                  }
+                  className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors disabled:cursor-not-allowed"
+                  disabled={!isAuthenticated || isSubmitting}
+                />
+                {url && (
+                  <button
+                    type="button"
+                    onClick={() => setUrl("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    aria-label="Clear input"
+                  >
+                    &#x2715;
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={!isAuthenticated || isSubmitting || !url}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all"
+              >
+                {isSubmitting ? "Analyzing..." : "Get Summary"}
+              </button>
+            </form>
+
+            {isSubmitting && (
+              <div className="text-center p-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto"></div>
+                <p className="mt-4 text-gray-400">Extracting Data...</p>
+              </div>
+            )}
+
+            {error && (
+              <div
+                className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-6"
+                role="alert"
+              >
+                <strong className="font-bold">Error: </strong>
+                <span className="block sm:inline">{error}</span>
+              </div>
+            )}
+
+            {!isSubmitting && !activeProduct && !error && <EmptyState />}
+
+            {activeProduct && (
+              <div className="mt-8">
+                <ProductCard
+                  data={activeProduct.refinedData}
+                  sourceUrl={activeProduct.sourceUrl}
+                  scrapedAt={activeProduct.scrapedAt}
+                />
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+declare global {
+  interface Window {
+    puter: any;
+  }
+}
+
+{
+  /* <HistoryComponent onSelectHistory={handleSelectHistory} /> */
+}
+
+// const handleSelectHistory = (item: HistoryItem) => {
+//   setActiveProduct(item);
+//   setError(null);
+// };
+
 // const HistoryComponent = ({
 //   onSelectHistory,
 // }: {
@@ -230,354 +624,3 @@ const AuthComponent = () => {
 //     </div>
 //   );
 // };
-
-const ProductCard = ({
-  data,
-  sourceUrl,
-  scrapedAt,
-}: {
-  data: ProductData;
-  sourceUrl: string;
-  scrapedAt: string;
-}) => {
-  return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
-      <div className="flex flex-col md:flex-row w-full justify-between">
-        {data.imageUrl && (
-          <div className="md:w-1/2 flex-shrink-0 p-4 flex items-center justify-center bg-gray-800/20">
-            <img
-              src={data.imageUrl}
-              alt={data.title || "Product Image"}
-              className="object-contain w-4/5 h-auto max-h-[400px] md:max-h-[500px] rounded-lg"
-              onError={(e) => (e.currentTarget.style.display = "none")}
-            />
-          </div>
-        )}
-        <div className="p-6 md:p-8 flex-grow">
-          <h2 className="text-2xl font-bold text-purple-300 mb-2">
-            {data.title}
-          </h2>
-          <div className="flex items-center gap-4 mb-4">
-            <DetailItem label="Brand" value={data.brand} />
-            <DetailItem label="Model" value={data.modelNumber} />
-          </div>
-          <div className="flex items-baseline gap-3 mb-4">
-            <p className="text-3xl font-bold text-green-400">{data.price}</p>
-            {data.discount && (
-              <p className="text-red-400 line-through">{data.discount}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-4 text-sm text-gray-400 mb-6">
-            {data.rating && (
-              <span>
-                ⭐ {data.rating} ({data.totalReviews} reviews)
-              </span>
-            )}
-            {data.availability && (
-              <span className="bg-green-800/50 text-green-300 px-2 py-1 rounded-md">
-                {data.availability}
-              </span>
-            )}
-          </div>
-          {/* {data.keyFeatures && data.keyFeatures.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-lg text-gray-200 mb-3">
-                Key Features
-              </h3>
-              <ul className="list-disc list-inside space-y-1 text-gray-300 text-sm">
-                {data.keyFeatures.map((feature: string, i: number) => (
-                  <li key={i}>{feature}</li>
-                ))}
-              </ul>
-            </div>
-          )} */}
-          {data.specs && Object.keys(data.specs).length > 0 && (
-            <div className="">
-              <h3 className="font-semibold text-lg text-gray-200 mb-3">
-                Technical Specifications
-              </h3>
-              <div className="text-sm border border-gray-700 rounded-lg">
-                {Object.entries(data.specs).map(([key, value], index) => (
-                  <div
-                    key={key}
-                    className={`flex justify-between p-3 ${
-                      index !== Object.keys(data.specs).length - 1
-                        ? "border-b border-gray-700"
-                        : ""
-                    }`}
-                  >
-                    <span className="font-medium text-gray-400">{key}</span>
-                    <span className="text-right text-gray-200">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="p-6 md:p-8 border-t border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <h3 className="font-semibold text-lg text-gray-200 mb-3">
-            What Users Say
-          </h3>
-          <p className="text-gray-300 text-sm">
-            {data.reviewSummary || "No review summary available."}
-          </p>
-        </div>
-        <div>
-          <h3 className="font-semibold text-lg text-gray-200 mb-3">
-            Ratings Breakdown
-          </h3>
-          <RatingsChart breakdown={data.ratingsBreakdown} />
-        </div>
-      </div>
-
-      <div className="p-6 md:p-8 border-t border-gray-700">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-          <DetailItem label="Category" value={data.category} />
-          <DetailItem label="Subcategory" value={data.subcategory} />
-          <DetailItem label="Color" value={data.color} />
-          <DetailItem label="Material" value={data.material} />
-          <DetailItem label="Size" value={data.size} />
-          <DetailItem label="Weight" value={data.weight} />
-          <DetailItem label="Dimensions" value={data.dimensions} />
-          <DetailItem label="Power Source" value={data.powerSource} />
-          <DetailItem label="Battery Life" value={data.batteryLife} />
-          <DetailItem label="Compatibility" value={data.compatibility} />
-          <DetailItem label="Warranty" value={data.warranty} />
-          <DetailItem label="Return Policy" value={data.returnPolicy} />
-          <DetailItem label="Shipping Cost" value={data.shippingCost} />
-          <DetailItem label="Delivery Time" value={data.deliveryTime} />
-        </div>
-      </div>
-      {data.topReviews && data.topReviews.length > 0 && (
-        <div className="p-6 md:p-8 border-t border-gray-700">
-          <h3 className="font-semibold text-lg text-gray-200 mb-4">
-            Top User Comments
-          </h3>
-          <div className="space-y-4">
-            {data.topReviews.map((comment: string, i: number) => (
-              <ReviewComment key={i} comment={comment} />
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="px-6 py-3 bg-gray-900/50 text-center text-xs text-gray-500">
-        Data from{" "}
-        <a
-          href={sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline"
-        >
-          {new URL(sourceUrl).hostname}
-        </a>
-        , fetched on {new Date(scrapedAt).toLocaleString("en-IN")}.
-      </div>
-    </div>
-  );
-};
-
-const getFriendlyErrorMessage = (error: unknown): string => {
-  if (error instanceof Error) {
-    if (error.message.includes("Failed to scrape")) {
-      return "Could not fetch data from the URL. The product might be unavailable or the link is incorrect.";
-    }
-    if (error.message.includes("valid JSON object")) {
-      return "AI failed to process the product data. The page format may be unsupported. Please try another link.";
-    }
-    return error.message;
-  }
-  return "An unexpected error occurred.";
-};
-
-export default function App() {
-  const { init, isAuthenticated, ai, addToHistory, isLoading, fetchHistory } =
-    usePuter();
-  const [url, setUrl] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeProduct, setActiveProduct] = useState<HistoryItem | null>(null);
-
-  useEffect(() => {
-    init();
-  }, [init]);
-
-  const handleSelectHistory = (item: HistoryItem) => {
-    setActiveProduct(item);
-    setError(null);
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!isAuthenticated) return setError(SIGN_IN_PROMPT);
-    if (!url.startsWith(AMAZON_URL_PREFIX)) return setError(INVALID_URL_ERROR);
-
-    setIsSubmitting(true);
-    setActiveProduct(null);
-
-    try {
-      const route = "/api/scrape";
-
-      console.log("Time before fetch:", new Date().toISOString());
-
-      const response = await fetch(route, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-
-      console.log("Time after fetch:", new Date().toISOString());
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to scrape.");
-      }
-
-      const scrapedData: ScrapedData = await response.json();
-
-      console.log("Scraped Data:", scrapedData);
-      const dataForAI = { ...scrapedData, scrapedAt: new Date().toISOString() };
-      const prompt = createProductSummaryPrompt(dataForAI);
-
-      console.log("Time before AI Request:", new Date().toISOString());
-
-      const aiResponse = await ai.chat(prompt, { model: "gpt-4o-mini" });
-
-      console.log("Time after AI Request:", new Date().toISOString());
-
-      if (!aiResponse?.message?.content) {
-        throw new Error("AI did not return a valid response.");
-      }
-
-      const jsonMatch = aiResponse.message.content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("AI did not return a valid JSON object.");
-      }
-
-      const refinedJson: RefinedData = JSON.parse(jsonMatch[0]);
-      const productData: HistoryItem = {
-        refinedData: { ...scrapedData, ...refinedJson },
-        sourceUrl: url,
-        scrapedAt: dataForAI.scrapedAt,
-      };
-
-      setActiveProduct(productData);
-      await addToHistory(productData);
-      setUrl("");
-    } catch (err: unknown) {
-      setError(getFriendlyErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="animate-spin rounded-full h-24 w-24 border-b-2 border-purple-400"></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-gray-900 min-h-screen text-white font-sans flex flex-col items-center p-4 sm:p-8">
-      <div className="w-full max-w-5xl mx-auto">
-        <header className="flex justify-between items-center mb-10">
-          <div className="text-left">
-            <h1 className="text-2xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Smart Product Summary
-            </h1>
-            <p className="text-gray-400 mt-1 text-sm sm:text-base">
-              Your AI-powered research assistant.
-            </p>
-          </div>
-          <AuthComponent />
-        </header>
-
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* <HistoryComponent onSelectHistory={handleSelectHistory} /> */}
-          <main className="flex-grow">
-            <form
-              onSubmit={handleSubmit}
-              className="flex flex-col sm:flex-row gap-3 mb-8"
-            >
-              <div className="relative flex-grow">
-                <label htmlFor="product-url" className="sr-only">
-                  Product URL
-                </label>
-                <input
-                  id="product-url"
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder={
-                    isAuthenticated
-                      ? `${AMAZON_URL_PREFIX}/product-url`
-                      : "Sign in to get started!"
-                  }
-                  className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors disabled:cursor-not-allowed"
-                  disabled={!isAuthenticated || isSubmitting}
-                />
-                {url && (
-                  <button
-                    type="button"
-                    onClick={() => setUrl("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-                    aria-label="Clear input"
-                  >
-                    &#x2715;
-                  </button>
-                )}
-              </div>
-              <button
-                type="submit"
-                disabled={!isAuthenticated || isSubmitting || !url}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all"
-              >
-                {isSubmitting ? "Analyzing..." : "Get Summary"}
-              </button>
-            </form>
-
-            {isSubmitting && (
-              <div className="text-center p-10">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto"></div>
-                <p className="mt-4 text-gray-400">Fetching and refining...</p>
-              </div>
-            )}
-
-            {error && (
-              <div
-                className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-6"
-                role="alert"
-              >
-                <strong className="font-bold">Error: </strong>
-                <span className="block sm:inline">{error}</span>
-              </div>
-            )}
-
-            {!isSubmitting && !activeProduct && !error && <EmptyState />}
-
-            {activeProduct && (
-              <div className="mt-8">
-                <ProductCard
-                  data={activeProduct.refinedData}
-                  sourceUrl={activeProduct.sourceUrl}
-                  scrapedAt={activeProduct.scrapedAt}
-                />
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-declare global {
-  interface Window {
-    puter: any;
-  }
-}

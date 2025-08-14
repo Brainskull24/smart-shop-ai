@@ -89,8 +89,6 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    console.log("Navigating to:", url);
-
     await page.goto(url, {
       waitUntil: "domcontentloaded",
       timeout: 30000,
@@ -109,7 +107,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (isBlocked) {
-      console.log("Request was blocked by Amazon");
       return NextResponse.json(
         { error: "Request blocked by Amazon. Try again later." },
         { status: 429 }
@@ -149,7 +146,6 @@ export async function POST(req: NextRequest) {
           "#icon-farm-container",
           "#product-support-information",
         ],
-        reviewsMedleyText: ["#reviewsMedley"],
         priceBlockText: [
           "span#corePrice_feature_div .a-offscreen",
           "span.priceToPay",
@@ -162,12 +158,7 @@ export async function POST(req: NextRequest) {
           ".priceBlockStrikePriceString",
           ".aok-inline-block > .a-price > .a-offscreen",
         ],
-        featureBullets: [
-          "#feature-bullets ul > li",
-          "#detailBullets_feature_div",
-          "#productDetails_techSpec_section_1 tr",
-        ],
-        technicalDetails: ["#productDetails_techSpec_section_1 tr"],
+        reviewsMedleyText: ["#reviewsMedley #histogramTable"],
         brand: ["#bylineInfo"],
       };
 
@@ -198,7 +189,7 @@ export async function POST(req: NextRequest) {
       const topReviews = Array.from(
         document.querySelectorAll('[data-hook="review-body"]')
       )
-        .slice(1, 5)
+        .slice(1, 6)
         .map((el) =>
           truncateWithEllipsis(
             el.textContent?.replace("Read more", "").trim() || "",
@@ -232,16 +223,8 @@ export async function POST(req: NextRequest) {
 
     await browser.close();
 
-    // Debug logging
-    console.log("Extracted data:", {
-      title: data.title ? "Found" : "Not found",
-      rating: data.rating ? "Found" : "Not found",
-      price: data.priceBlockText ? "Found" : "Not found",
-    });
-
     if (!data.title) {
       const pageTitle = await page.title().catch(() => "Unknown");
-      console.log("Page title:", pageTitle);
 
       throw new Error(
         `Could not extract product title. Page title: ${pageTitle}`

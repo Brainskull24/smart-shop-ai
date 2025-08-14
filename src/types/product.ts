@@ -1,33 +1,25 @@
 export interface ScrapedData {
   title: string;
   priceBlockText: string;
-  topReviews: string[];
-  reviewsMedleyText: string;
+  discount?: string;
+  topReviews?: string[];
+  reviewsMedleyText?: string;
   fullDescription: string;
   serviceInfoText: string;
-  featureBullets: string[];
-  technicalDetails: Record<string, string>;
+  featureBullets?: string[];
+  technicalDetails?: Record<string, string>;
   imageUrl?: string;
   brand?: string;
   modelNumber?: string;
-  discount?: string;
   rating?: string;
   totalReviews?: string;
   availability?: string;
   category?: string;
   subcategory?: string;
-  color?: string;
-  material?: string;
-  size?: string;
-  weight?: string;
-  dimensions?: string;
-  powerSource?: string;
-  batteryLife?: string;
-  compatibility?: string;
   warranty?: string;
   returnPolicy?: string;
-  shippingCost?: string;
   deliveryTime?: string;
+  specifications?: Record<string, string>;
 }
 
 // Data refined by the AI model

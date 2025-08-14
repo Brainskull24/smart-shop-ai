@@ -181,7 +181,16 @@ export const usePuter = create<PuterStore>()(
         get: async (key) => {
           if (!window.puter) return null;
           try {
-            return await window.puter.kv.get(key);
+            const rawValue = await window.puter.kv.get(key);
+            if (typeof rawValue === "string") {
+              // Try to parse it as JSON. If it fails, return the raw string.
+              try {
+                return JSON.parse(rawValue);
+              } catch (e) {
+                return rawValue; // It's just a regular string, not JSON
+              }
+            }
+            return rawValue;
           } catch (error) {
             console.error("KV get error:", error);
             return null;
