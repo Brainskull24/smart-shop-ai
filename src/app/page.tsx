@@ -298,13 +298,13 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeProduct, setActiveProduct] = useState<HistoryItem | null>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     init();
   }, [init]);
 
   const handleSubmit = async (e: FormEvent) => {
+    console.log("Time: ", new Date().toLocaleTimeString());
     e.preventDefault();
     setError(null);
 
@@ -352,9 +352,13 @@ export default function App() {
         serviceInfoText: scrapedData.serviceInfoText,
         specifications: scrapedData.specifications,
       };
+
       const prompt = createProductSummaryPrompt(dataForAI);
 
-      const aiResponse = await ai.chat(prompt, { model: "gpt-4o-mini" });
+      const aiResponse = await ai.chat(prompt, {
+        model: "gpt-4o-mini",
+        response_format: { type: "json_object" },
+      });
 
       if (!aiResponse?.message?.content) {
         throw new Error("AI did not return a valid response.");
@@ -391,6 +395,8 @@ export default function App() {
     } finally {
       setIsSubmitting(false);
     }
+
+    console.log("Time: ", new Date().toLocaleTimeString());
   };
 
   if (isLoading) {

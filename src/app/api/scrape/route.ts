@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
+import { kv } from "@vercel/kv";
+import { Ratelimit } from "@upstash/ratelimit";
+
+const ratelimit = new Ratelimit({
+  redis: kv,
+  limiter: Ratelimit.slidingWindow(5, "10 s"),
+});
 
 const getLaunchOptions = async () => {
   if (process.env.VERCEL_ENV === "production") {
@@ -46,6 +53,16 @@ const blockedDomains = [
 ];
 
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
+  const { success } = await ratelimit.limit(ip);
+
+  console.log(ip);
+
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  }
+
   let browser;
 
   try {

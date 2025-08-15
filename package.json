@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@sparticuz/chromium": "^138.0.2",
+    "@upstash/ratelimit": "^2.0.6",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/kv": "^3.0.0",
     "cheerio": "^1.1.2",
     "next": "15.4.6",
     "puppeteer-core": "^24.16.1",
