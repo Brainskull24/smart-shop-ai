@@ -343,7 +343,6 @@ export default function App() {
       }
 
       const scrapedData: ScrapedData = await response.json();
-      console.log("Scraped Data:", scrapedData);
 
       const dataForAI = {
         title: scrapedData.title,
@@ -355,12 +354,7 @@ export default function App() {
       };
       const prompt = createProductSummaryPrompt(dataForAI);
 
-      console.log("Time: ", new Date().toISOString());
-
       const aiResponse = await ai.chat(prompt, { model: "gpt-4o-mini" });
-      console.log("AI Response:", aiResponse);
-
-      console.log("Time: ", new Date().toISOString());
 
       if (!aiResponse?.message?.content) {
         throw new Error("AI did not return a valid response.");

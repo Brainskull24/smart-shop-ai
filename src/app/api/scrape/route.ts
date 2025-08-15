@@ -35,6 +35,16 @@ const getLaunchOptions = async () => {
   }
 };
 
+const blockedDomains = [
+  "google-analytics.com",
+  "googletagmanager.com",
+  "facebook.net",
+  "facebook.com",
+  "doubleclick.net",
+  "amazon-adsystem.com",
+  "adservice.google.com",
+];
+
 export async function POST(req: NextRequest) {
   let browser;
 
@@ -81,6 +91,7 @@ export async function POST(req: NextRequest) {
 
     page.on("request", (req) => {
       if (
+        blockedDomains.some((domain) => url.includes(domain)) ||
         ["image", "stylesheet", "font", "media"].includes(req.resourceType())
       ) {
         req.abort();
@@ -94,7 +105,7 @@ export async function POST(req: NextRequest) {
       timeout: 30000,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await page.waitForSelector("span#productTitle", { timeout: 30000 });
 
     const isBlocked = await page.evaluate(() => {
       const blockedTexts = [
