@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,10 +19,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* <link rel="icon" href="icon.png" type="image/png" /> */}
       </head>
       <body className={inter.className}>
         {children}
+        <Analytics />
         <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
       </body>
     </html>
