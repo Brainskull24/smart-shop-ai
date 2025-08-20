@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-// Define the structure of our Puter store
 interface PuterStore {
   puterReady: boolean;
   isLoading: boolean;

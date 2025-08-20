@@ -12,6 +12,7 @@ export interface ScrapedData {
   brand?: string;
   modelNumber?: string;
   rating?: string;
+  totalRatings?: string;
   totalReviews?: string;
   availability?: string;
   category?: string;
@@ -22,7 +23,6 @@ export interface ScrapedData {
   specifications?: Record<string, string>;
 }
 
-// Data refined by the AI model
 export interface RefinedData {
   title: string;
   price: string;

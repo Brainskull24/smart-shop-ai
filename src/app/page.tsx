@@ -8,11 +8,7 @@ import {
   ProductData,
 } from "@/types/product";
 import { createProductSummaryPrompt } from "@/lib/prompts";
-import {
-  AMAZON_URL_PREFIX,
-  INVALID_URL_ERROR,
-  SIGN_IN_PROMPT,
-} from "@/lib/constants";
+import { AMAZON_URL_PREFIX, SIGN_IN_PROMPT } from "@/lib/constants";
 
 const DetailItem = ({
   label,
@@ -21,6 +17,15 @@ const DetailItem = ({
   label: string;
   value: string | undefined;
 }) => {
+  if (value === "__LOADING__") {
+    return (
+      <div>
+        <p className="text-sm text-gray-400">{label}</p>
+        <SkeletonLoader className="h-6 w-24 mt-1" />
+      </div>
+    );
+  }
+
   if (
     !value ||
     value === "Not found" ||
@@ -144,9 +149,13 @@ const ProductCard = ({
           </div>
         )}
         <div className="p-6 md:p-8 flex-grow">
-          <h2 className="text-2xl font-bold text-purple-300 mb-2">
-            {data.title}
-          </h2>
+          {data.title === "__LOADING__" ? (
+            <ParagraphSkeleton />
+          ) : (
+            <h2 className="text-2xl font-bold text-purple-300 mb-2">
+              {data.title}
+            </h2>
+          )}
           <div className="flex items-center gap-4 mb-4">
             <DetailItem label="Brand" value={data.brand} />
             <DetailItem label="Model" value={data.modelNumber} />
@@ -160,7 +169,7 @@ const ProductCard = ({
           <div className="flex items-center gap-4 text-sm text-gray-400 mb-6">
             {data.rating && (
               <span>
-                ⭐ {data.rating} ({data.totalReviews} reviews)
+                ⭐ {data.rating} ({data.totalRatings || "0"} ratings)
               </span>
             )}
             {data.availability && (
@@ -169,27 +178,31 @@ const ProductCard = ({
               </span>
             )}
           </div>
-          {data.specs && Object.keys(data.specs).length > 0 && (
-            <div className="">
-              <h3 className="font-semibold text-lg text-gray-200 mb-3">
-                Technical Specifications
-              </h3>
-              <div className="text-sm border border-gray-700 rounded-lg">
-                {Object.entries(data.specs).map(([key, value], index) => (
-                  <div
-                    key={key}
-                    className={`flex justify-between p-3 ${
-                      index !== Object.keys(data.specs).length - 1
-                        ? "border-b border-gray-700"
-                        : ""
-                    }`}
-                  >
-                    <span className="font-medium text-gray-400">{key}</span>
-                    <span className="text-right text-gray-200">{value}</span>
-                  </div>
-                ))}
-              </div>
+          <h3 className="font-semibold text-lg text-gray-200 mb-3">
+            Technical Specifications
+          </h3>
+          {(data.specs as any)?.isLoading === "true" ? (
+            <SpecsSkeleton />
+          ) : data.specs && Object.keys(data.specs).length > 0 ? (
+            <div className="text-sm border border-gray-700 rounded-lg">
+              {Object.entries(data.specs).map(([key, value], index) => (
+                <div
+                  key={key}
+                  className={`flex justify-between p-3 ${
+                    index !== Object.keys(data.specs).length - 1
+                      ? "border-b border-gray-700"
+                      : ""
+                  }`}
+                >
+                  <span className="font-medium text-gray-400">{key}</span>
+                  <span className="text-right text-gray-200">{value}</span>
+                </div>
+              ))}
             </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              <i>No specifications available.</i>
+            </p>
           )}
         </div>
       </div>
@@ -198,9 +211,13 @@ const ProductCard = ({
           <h3 className="font-semibold text-lg text-gray-200 mb-3">
             What Users Say
           </h3>
-          <p className="text-gray-300 text-sm">
-            {data.reviewSummary || "No review summary available."}
-          </p>
+          {data.reviewSummary === "__LOADING__" ? (
+            <ParagraphSkeleton />
+          ) : (
+            <p className="text-gray-300 text-sm">
+              {data.reviewSummary || "No review summary available."}
+            </p>
+          )}
         </div>
         <div>
           <h3 className="font-semibold text-lg text-gray-200 mb-3">
@@ -243,18 +260,21 @@ const ProductCard = ({
           />
         </div>
       </div>
-      {data.topReviews && data.topReviews.length > 0 && (
-        <div className="p-6 md:p-8 border-t border-gray-700">
-          <h3 className="font-semibold text-lg text-gray-200 mb-4">
-            Top User Comments
-          </h3>
+      <div className="p-6 md:p-8 border-t border-gray-700">
+        <h3 className="font-semibold text-lg text-gray-200 mb-4">
+          Top User Comments
+        </h3>
+        {data.topReviews && data.topReviews.length > 0 ? (
           <div className="space-y-4">
             {data.topReviews.slice(0, 5).map((comment: string, i: number) => (
               <ReviewComment key={i} comment={comment} />
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <i className="text-gray-500 text-sm">No Reviews Available.</i>
+        )}
+      </div>
+
       <div className="px-6 py-3 bg-gray-900/50 text-center text-xs text-gray-500">
         Data from{" "}
         <a
@@ -284,6 +304,29 @@ const getFriendlyErrorMessage = (error: unknown): string => {
   return "An unexpected error occurred.";
 };
 
+const SkeletonLoader = ({ className }: { className?: string }) => (
+  <div className={`bg-gray-700 rounded-md animate-pulse ${className}`} />
+);
+
+// A specific skeleton for the specs table
+const SpecsSkeleton = () => (
+  <div className="space-y-2">
+    <SkeletonLoader className="h-4 w-full" />
+    <SkeletonLoader className="h-4 w-full" />
+    <SkeletonLoader className="h-4 w-4/5" />
+    <SkeletonLoader className="h-4 w-2/3" />
+  </div>
+);
+
+// A specific skeleton for the review summary paragraph
+const ParagraphSkeleton = () => (
+  <div className="space-y-2">
+    <SkeletonLoader className="h-4 w-full" />
+    <SkeletonLoader className="h-4 w-full" />
+    <SkeletonLoader className="h-4 w-11/12" />
+  </div>
+);
+
 export default function App() {
   const {
     init,
@@ -304,12 +347,15 @@ export default function App() {
   }, [init]);
 
   const handleSubmit = async (e: FormEvent) => {
-    console.log("Time: ", new Date().toLocaleTimeString());
     e.preventDefault();
     setError(null);
 
     if (!isAuthenticated) return setError(SIGN_IN_PROMPT);
-    if (!url.startsWith(AMAZON_URL_PREFIX)) return setError(INVALID_URL_ERROR);
+    const supportedDomainsRegex =
+      /^(https?:\/\/www\.)?(amazon\.(in|com)|flipkart\.com)\//;
+    if (!supportedDomainsRegex.test(url)) {
+      return setError("Please paste a valid link from Amazon or Flipkart.");
+    }
 
     setIsSubmitting(true);
     setActiveProduct(null);
@@ -344,6 +390,27 @@ export default function App() {
 
       const scrapedData: ScrapedData = await response.json();
 
+      console.log("Scraped Data:", scrapedData);
+
+      const initialProductState: HistoryItem = {
+        refinedData: {
+          ...scrapedData,
+          title: "__LOADING__",
+          price: scrapedData.priceBlockText,
+          reviewSummary: "__LOADING__",
+          ratingsBreakdown: {},
+          keyFeatures: [],
+          returnPolicy: "__LOADING__",
+          warranty: "__LOADING__",
+          replacementinfo: "__LOADING__",
+          specs: { isLoading: "true" },
+        },
+        sourceUrl: url,
+        scrapedAt: new Date().toISOString(),
+      };
+
+      setActiveProduct(initialProductState);
+
       const dataForAI = {
         title: scrapedData.title,
         priceBlockText: scrapedData.priceBlockText,
@@ -351,6 +418,8 @@ export default function App() {
         fullDescription: scrapedData.fullDescription,
         serviceInfoText: scrapedData.serviceInfoText,
         specifications: scrapedData.specifications,
+        featureBullets: scrapedData.featureBullets,
+        reviewsMedleyText: scrapedData.reviewsMedleyText,
       };
 
       const prompt = createProductSummaryPrompt(dataForAI);
@@ -358,18 +427,25 @@ export default function App() {
       const aiResponse = await ai.chat(prompt, {
         model: "gpt-4o-mini",
         response_format: { type: "json_object" },
+        stream: true,
       });
 
-      if (!aiResponse?.message?.content) {
-        throw new Error("AI did not return a valid response.");
+      let aiResponseJsonString = "";
+      for await (const chunk of aiResponse) {
+        const content = chunk?.text;
+        if (content) {
+          aiResponseJsonString += content;
+        }
       }
 
-      const jsonMatch = aiResponse.message.content.match(/\{[\s\S]*\}/);
+      const jsonMatch = aiResponseJsonString.match(/\{[\s\S]*\}/);
+
       if (!jsonMatch) {
-        throw new Error("AI did not return a valid JSON object.");
+        throw new Error("AI did not return a valid JSON object in the stream.");
       }
 
       const refinedJson: RefinedData = JSON.parse(jsonMatch[0]);
+
       const productData: HistoryItem = {
         refinedData: { ...scrapedData, ...refinedJson },
         sourceUrl: url,
@@ -395,8 +471,6 @@ export default function App() {
     } finally {
       setIsSubmitting(false);
     }
-
-    console.log("Time: ", new Date().toLocaleTimeString());
   };
 
   if (isLoading) {
