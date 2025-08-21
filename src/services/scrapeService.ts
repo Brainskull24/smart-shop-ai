@@ -247,7 +247,7 @@ export async function scrapeUrl(url: string) {
 
         return extractedData;
       },
-      siteConfig,
+      JSON.parse(JSON.stringify(siteConfig)),
       marketplace
     );
 
@@ -261,7 +261,7 @@ export async function scrapeUrl(url: string) {
     return data;
   } finally {
     if (browser) {
-      await browser.disconnect();
+      await browser.close();
     }
   }
 }
