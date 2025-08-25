@@ -3,6 +3,12 @@ import { kv } from "@vercel/kv";
 import { Ratelimit } from "@upstash/ratelimit";
 import { scrapeUrl } from "@/services/scrapeService";
 
+if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+  throw new Error(
+    "KV_REST_API_URL and KV_REST_API_TOKEN environment variables are not set."
+  );
+}
+
 const ratelimit = new Ratelimit({
   redis: kv,
   limiter: Ratelimit.slidingWindow(5, "10 s"),

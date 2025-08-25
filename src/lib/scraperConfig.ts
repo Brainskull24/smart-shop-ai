@@ -74,33 +74,33 @@ export const scraperConfig: Record<string, SiteConfig> = {
 
   flipkart: {
     selectors: {
-      title: [".VU-ZEz"], //
-      rating: [".XQDdHH"], //
-      totalRatings: [".Wphh3N > span > span:nth-of-type(1)", ".Wphh3N > span"], //
-      totalReviews: [".Wphh3N > span > span:nth-of-type(3)"], //
-      imageUrl: [".DByuf4.IZexXJ.jLEJ7H"], //
+      title: [".VU-ZEz"],
+      rating: [".XQDdHH"],
+      totalRatings: [".Wphh3N > span > span:nth-of-type(1)", ".Wphh3N > span"],
+      totalReviews: [".Wphh3N > span > span:nth-of-type(3)"],
+      imageUrl: [".DByuf4.IZexXJ.jLEJ7H"],
       fullDescription: [
         ".cPHDOP.pqHCzB",
         ".xFVion",
         "div.DojaWF.gdgoEp > div.cPHDOP.col-12-12:nth-of-type(3)",
       ],
-      availability: [".nyRpc8"], //
+      availability: [".nyRpc8"],
       serviceInfoText: [".jHlbt-", ".cvCpHS"],
       reviewsMedleyText: ["._8-rIO3", ".HO1dRb"],
-      category: ["._7dPnhA > div:nth-of-type(2) > a"], //
-      subcategory: ["._7dPnhA > div:nth-of-type(3) > a"], //
-      deliveryTime: [".Y8v7Fl", ".yiggsN"], //
-      priceBlockText: [".Nx9bqj.CxhGGd"], //
-      discount: [".yRaY8j"], //
-      brand: ["._7dPnhA > div:nth-of-type(4) > a"], //
+      category: ["._7dPnhA > div:nth-of-type(2) > a"],
+      subcategory: ["._7dPnhA > div:nth-of-type(3) > a"],
+      deliveryTime: [".Y8v7Fl", ".yiggsN"],
+      priceBlockText: [".Nx9bqj.CxhGGd"],
+      discount: [".yRaY8j"],
+      brand: ["._7dPnhA > div:nth-of-type(4) > a"],
       topReviews: {
         reviewContainer: ".col.EPCmJX",
         reviewText: ".ZmyHeo",
-      }, //
+      },
       specs: {
         container:
           "#container > div > div._39kFie.N3De93.JxFEK3._48O0EI > div.DOjaWF.YJG4Cf > div.DOjaWF.gdgoEp.col-8-12 > div.DOjaWF.gdgoEp",
-      },      
+      },
     },
   },
 };

@@ -241,15 +241,12 @@ export const usePuter = create<PuterStore>()(
     }),
     {
       name: "smart-product-summary-storage",
-      // Only persist certain non-sensitive data
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,
       }),
-      // Always fetch fresh history from Puter KV on hydration
       onRehydrateStorage: () => (state) => {
         if (state?.isAuthenticated) {
-          // Give a small delay for Puter to initialize
           setTimeout(() => {
             state.fetchHistory();
           }, 1000);
