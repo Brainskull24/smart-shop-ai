@@ -626,6 +626,8 @@ export default function App() {
       }
       const refinedJson: RefinedData = JSON.parse(jsonMatch[0]);
 
+      console.log("Refined Data from AI:", refinedJson);
+
       const productData: HistoryItem = {
         refinedData: { ...scrapedData, ...refinedJson },
         sourceUrl: productUrl,

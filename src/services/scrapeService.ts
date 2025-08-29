@@ -7,13 +7,13 @@ import fetch from "node-fetch";
 async function resolveFinalUrl(shortUrl: string): Promise<string> {
   try {
     const res = await fetch(shortUrl, {
-      method: "GET", 
+      method: "GET",
       redirect: "follow",
     });
-    return res.url; 
+    return res.url;
   } catch (err) {
     console.error("Failed to resolve short URL:", err);
-    return shortUrl; 
+    return shortUrl;
   }
 }
 
@@ -33,10 +33,17 @@ const getLaunchOptions = async () => {
         "--disable-background-timer-throttling",
         "--disable-backgrounding-occluded-windows",
         "--disable-renderer-backgrounding",
+        "--disable-extensions",
+        "--disable-plugins",
+        "--disable-images",
+        "--aggressive-cache-discard",
+        "--memory-pressure-off",
+        "--max_old_space_size=4096",
       ],
       executablePath: await chromium.executablePath(),
       headless: "new",
       defaultViewport: { width: 1280, height: 720 },
+      timeout: 8000,
     };
   } else {
     const localChromePath =
@@ -123,16 +130,53 @@ export async function scrapeUrl(url: string) {
     await page.goto(expandedUrl, { waitUntil: "domcontentloaded" });
 
     if (marketplace === "amazon") {
-      await page.waitForSelector(
-        "#add-to-cart-button, #buy-now-button, #availability",
-        { timeout: 45000 }
-      );
+      // Wait for multiple selectors with shorter timeout
+      const selectors = [
+        "#add-to-cart-button",
+        "#buy-now-button",
+        "#availability",
+        "[data-hook='review-body']", // Reviews
+        "#feature-bullets", // Feature bullets
+      ];
+
+      for (const selector of selectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+        } catch (e) {
+          console.log(`Selector ${selector} not found, continuing...`);
+        }
+      }
     } else {
-      const firstSelector = siteConfig.selectors.title[0];
-      if (firstSelector) {
-        await page.waitForSelector(firstSelector, { timeout: 45000 });
+      // Flipkart specific waiting
+      const selectors = [
+        ".VU-ZEz", // Title
+        "._7dPnhA > div:nth-of-type(2) > a", // Category
+      ];
+
+      for (const selector of selectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+        } catch (e) {
+          console.log(`Selector ${selector} not found, continuing...`);
+        }
       }
     }
+
+    await page.evaluate(() => {
+      return new Promise((resolve) => setTimeout(resolve, 1000));
+    });
+
+    // if (marketplace === "amazon") {
+    //   await page.waitForSelector(
+    //     "#add-to-cart-button, #buy-now-button, #availability",
+    //     { timeout: 45000 }
+    //   );
+    // } else {
+    //   const firstSelector = siteConfig.selectors.title[0];
+    //   if (firstSelector) {
+    //     await page.waitForSelector(firstSelector, { timeout: 45000 });
+    //   }
+    // }
 
     const isBlocked = await page.evaluate(() => {
       const blockedTexts = [
