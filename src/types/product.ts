@@ -1,11 +1,11 @@
 export interface ScrapedData {
   title: string;
-  priceBlockText: string;
+  priceBlockText?: string;
   discount?: string;
   topReviews?: string[];
   reviewsMedleyText?: string;
-  fullDescription: string;
-  serviceInfoText: string;
+  fullDescription?: string;
+  serviceInfoText?: string;
   featureBullets?: string[];
   technicalDetails?: Record<string, string>;
   imageUrl?: string;
@@ -27,13 +27,17 @@ export interface RefinedData {
   title: string;
   price: string;
   discount?: string;
-  reviewSummary: string;
+  reviewSummary?: string;
   ratingsBreakdown: Record<string, string>;
-  keyFeatures: string[];
+  keyFeatures?: string[];
   returnPolicy: string;
   warranty: string;
   replacementinfo: string;
   specs: Record<string, string>;
+  pros: string[];
+  cons: string[];
+  bestFor: string;
+  sentimentScore: number;
 }
 
 export type ProductData = ScrapedData & RefinedData;

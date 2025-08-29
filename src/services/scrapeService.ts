@@ -2,6 +2,20 @@ import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import { getSiteConfig, SiteConfig } from "@/lib/scraperConfig";
+import fetch from "node-fetch";
+
+async function resolveFinalUrl(shortUrl: string): Promise<string> {
+  try {
+    const res = await fetch(shortUrl, {
+      method: "GET", 
+      redirect: "follow",
+    });
+    return res.url; 
+  } catch (err) {
+    console.error("Failed to resolve short URL:", err);
+    return shortUrl; 
+  }
+}
 
 const getLaunchOptions = async () => {
   if (process.env.VERCEL_ENV === "production") {
@@ -55,7 +69,10 @@ export async function scrapeUrl(url: string) {
     if (!url) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
-    const siteConfig = getSiteConfig(url);
+
+    const expandedUrl = await resolveFinalUrl(url);
+
+    const siteConfig = getSiteConfig(expandedUrl);
 
     if (!siteConfig) {
       return NextResponse.json(
@@ -68,6 +85,8 @@ export async function scrapeUrl(url: string) {
     browser = await puppeteer.launch(options as any);
 
     const page = await browser.newPage();
+
+    page.setDefaultTimeout(60000);
 
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -90,11 +109,9 @@ export async function scrapeUrl(url: string) {
 
     await page.setRequestInterception(true);
 
-    page.setDefaultTimeout(30000);
-
     page.on("request", (req) => {
       if (
-        blockedDomains.some((domain) => url.includes(domain)) ||
+        blockedDomains.some((domain) => expandedUrl.includes(domain)) ||
         ["image", "stylesheet", "font", "media"].includes(req.resourceType())
       ) {
         req.abort();
@@ -103,14 +120,21 @@ export async function scrapeUrl(url: string) {
       }
     });
 
-    await page.goto(url, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
+    await page.goto(expandedUrl, { waitUntil: "domcontentloaded" });
 
-    const firstSelector = siteConfig.selectors.title[0];
-    if (firstSelector) {
-      await page.waitForSelector(firstSelector, { timeout: 30000 });
+    const finalUrl = page.url();
+    console.log("Redirected to final URL:", finalUrl);
+
+    if (marketplace === "amazon") {
+      await page.waitForSelector(
+        "#add-to-cart-button, #buy-now-button, #availability",
+        { timeout: 45000 }
+      );
+    } else {
+      const firstSelector = siteConfig.selectors.title[0];
+      if (firstSelector) {
+        await page.waitForSelector(firstSelector, { timeout: 45000 });
+      }
     }
 
     const isBlocked = await page.evaluate(() => {
@@ -124,9 +148,8 @@ export async function scrapeUrl(url: string) {
     });
 
     if (isBlocked) {
-      return NextResponse.json(
-        { error: "Request blocked by Amazon. Try again later." },
-        { status: 429 }
+      throw new Error(
+        "Request blocked by Amazon. Try again later or use a different link."
       );
     }
 
@@ -137,7 +160,8 @@ export async function scrapeUrl(url: string) {
       const firstSixLinks = Array.from(allReadMoreLinks).slice(0, 6);
       firstSixLinks.forEach((link) => (link as HTMLElement).click());
     });
-    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const data = await page.evaluate(
       (config: SiteConfig, marketplace: string) => {
@@ -201,7 +225,7 @@ export async function scrapeUrl(url: string) {
         const topReviews = Array.from(
           document.querySelectorAll(s.topReviews.reviewContainer)
         )
-          .slice(1, 6)
+          .slice(1, 20)
           .map((el) =>
             truncateWithEllipsis(
               el
@@ -252,13 +276,16 @@ export async function scrapeUrl(url: string) {
     );
 
     if (!data.title) {
-      const pageTitle = await page.title().catch(() => "Unknown");
-
       throw new Error(
-        `Could not extract product title. Page title: ${pageTitle}`
+        `Failed to scrape the product title. The page structure may have changed or the content is blocked.`
       );
     }
     return data;
+  } catch (error) {
+    if (browser) {
+      await browser.close();
+    }
+    throw error;
   } finally {
     if (browser) {
       await browser.close();
