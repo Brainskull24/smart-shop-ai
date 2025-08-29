@@ -25,14 +25,18 @@ const getLaunchOptions = async () => {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
         "--no-first-run",
         "--no-zygote",
+        "--single-process",
         "--disable-gpu",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
       ],
       executablePath: await chromium.executablePath(),
       headless: "new",
       defaultViewport: { width: 1280, height: 720 },
-      timeout: 8000,
     };
   } else {
     const localChromePath =
@@ -82,18 +86,12 @@ export async function scrapeUrl(url: string) {
 
     const page = await browser.newPage();
 
-    page.setDefaultTimeout(60000);
-    page.setDefaultNavigationTimeout(60000);
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
 
-    if (marketplace === "flipkart") {
-      await page.setUserAgent(
-        "Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-      );
-    } else {
-      await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      );
-    }
+    await page.setRequestInterception(true);
+    page.setDefaultTimeout(30000);
 
     await page.setExtraHTTPHeaders({
       Accept:
@@ -108,20 +106,12 @@ export async function scrapeUrl(url: string) {
       "Sec-Fetch-Site": "none",
       "Sec-Fetch-User": "?1",
       "Cache-Control": "max-age=0",
-      ...(marketplace === "flipkart"
-        ? { Referer: "https://www.google.com/" }
-        : {}),
     });
 
-    await page.setRequestInterception(true);
-
     page.on("request", (req) => {
-      const reqUrl = req.url();
-      const type = req.resourceType();
-
       if (
-        blockedDomains.some((domain) => reqUrl.includes(domain)) ||
-        ["image", "media", "font"].includes(type)
+        blockedDomains.some((domain) => expandedUrl.includes(domain)) ||
+        ["image", "stylesheet", "font", "media"].includes(req.resourceType())
       ) {
         req.abort();
       } else {
@@ -131,47 +121,20 @@ export async function scrapeUrl(url: string) {
 
     await page.goto(expandedUrl, {
       waitUntil: "domcontentloaded",
-      timeout: 45000,
+      timeout: 30000,
     });
 
     if (marketplace === "amazon") {
-      const selectors = [
-        "#add-to-cart-button",
-        "#buy-now-button",
-        "#availability",
-        "[data-hook='review-body']", // Reviews
-        "#feature-bullets", // Feature bullets
-      ];
-
-      for (const selector of selectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 2000 });
-        } catch (e) {
-          console.log(`Selector ${selector} not found, continuing...`);
-        }
-      }
+      await page.waitForSelector(
+        "#add-to-cart-button, #buy-now-button, #availability",
+        { timeout: 45000 }
+      );
     } else {
-      // Flipkart specific waiting
-      const selectors = [
-        ".VU-ZEz", // Title
-        "._7dPnhA > div:nth-of-type(2) > a", // Category
-      ];
-
-      for (const selector of selectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 2000 });
-        } catch (e) {
-          console.log(`Selector ${selector} not found, continuing...`);
-        }
+      const firstSelector = siteConfig.selectors.title[0];
+      if (firstSelector) {
+        await page.waitForSelector(firstSelector, { timeout: 45000 });
       }
     }
-
-    await page.evaluate(async () => {
-      for (let i = 0; i < 6; i++) {
-        window.scrollBy(0, window.innerHeight);
-        await new Promise((r) => setTimeout(r, 400));
-      }
-    });
 
     const isBlocked = await page.evaluate(() => {
       const blockedTexts = [
@@ -196,7 +159,8 @@ export async function scrapeUrl(url: string) {
       const firstSixLinks = Array.from(allReadMoreLinks).slice(0, 6);
       firstSixLinks.forEach((link) => (link as HTMLElement).click());
     });
-    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const data = await page.evaluate(
       (config: SiteConfig, marketplace: string) => {
@@ -257,22 +221,21 @@ export async function scrapeUrl(url: string) {
           return text.slice(0, maxLen).trimEnd() + "...";
         }
 
-        let topReviews: string[] = [];
-        if (s.topReviews?.reviewContainer && s.topReviews?.reviewText) {
-          topReviews = Array.from(
-            document.querySelectorAll(s.topReviews.reviewContainer)
+        const topReviews = Array.from(
+          document.querySelectorAll(s.topReviews.reviewContainer)
+        )
+          .slice(0, 20)
+          .map((el) =>
+            truncateWithEllipsis(
+              el
+                .querySelector(s.topReviews.reviewText)
+                ?.textContent?.replace("Read more", "")
+                .replace("READ MORE", "")
+                .trim() || "",
+              maxLength
+            )
           )
-            .slice(0, 20)
-            .map((el) => {
-              const raw =
-                el
-                  .querySelector(s.topReviews.reviewText)
-                  ?.textContent?.replace(/Read more|READ MORE/gi, "")
-                  .trim() || "";
-              return truncateWithEllipsis(raw, maxLength);
-            })
-            .filter((t) => Boolean(t));
-        }
+          .filter(Boolean);
         extractedData.topReviews = topReviews;
 
         let specs: any = {};

@@ -546,7 +546,7 @@ export default function App() {
       setLoadingMessage("Extracting data from source...");
       const route = "/api/scrape";
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 70000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch(route, {
         method: "POST",
