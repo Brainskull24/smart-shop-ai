@@ -565,6 +565,8 @@ export default function App() {
       setLoadingMessage("Analyzing with AI...");
       const scrapedData: ScrapedData = await response.json();
 
+      console.log("Scraped Data:", scrapedData);
+
       const initialProductState: HistoryItem = {
         refinedData: {
           ...scrapedData,
