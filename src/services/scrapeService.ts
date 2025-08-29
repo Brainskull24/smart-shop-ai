@@ -25,20 +25,9 @@ const getLaunchOptions = async () => {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
         "--no-first-run",
         "--no-zygote",
-        "--single-process",
         "--disable-gpu",
-        "--disable-background-timer-throttling",
-        "--disable-backgrounding-occluded-windows",
-        "--disable-renderer-backgrounding",
-        "--disable-extensions",
-        "--disable-plugins",
-        "--disable-images",
-        "--aggressive-cache-discard",
-        "--memory-pressure-off",
-        "--max_old_space_size=4096",
       ],
       executablePath: await chromium.executablePath(),
       headless: "new",
@@ -94,10 +83,17 @@ export async function scrapeUrl(url: string) {
     const page = await browser.newPage();
 
     page.setDefaultTimeout(60000);
+    page.setDefaultNavigationTimeout(60000);
 
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
+    if (marketplace === "flipkart") {
+      await page.setUserAgent(
+        "Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+      );
+    } else {
+      await page.setUserAgent(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      );
+    }
 
     await page.setExtraHTTPHeaders({
       Accept:
@@ -112,14 +108,20 @@ export async function scrapeUrl(url: string) {
       "Sec-Fetch-Site": "none",
       "Sec-Fetch-User": "?1",
       "Cache-Control": "max-age=0",
+      ...(marketplace === "flipkart"
+        ? { Referer: "https://www.google.com/" }
+        : {}),
     });
 
     await page.setRequestInterception(true);
 
     page.on("request", (req) => {
+      const reqUrl = req.url();
+      const type = req.resourceType();
+
       if (
-        blockedDomains.some((domain) => expandedUrl.includes(domain)) ||
-        ["image", "stylesheet", "font", "media"].includes(req.resourceType())
+        blockedDomains.some((domain) => reqUrl.includes(domain)) ||
+        ["image", "media", "font"].includes(type)
       ) {
         req.abort();
       } else {
@@ -127,10 +129,12 @@ export async function scrapeUrl(url: string) {
       }
     });
 
-    await page.goto(expandedUrl, { waitUntil: "domcontentloaded" });
+    await page.goto(expandedUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
+    });
 
     if (marketplace === "amazon") {
-      // Wait for multiple selectors with shorter timeout
       const selectors = [
         "#add-to-cart-button",
         "#buy-now-button",
@@ -162,21 +166,12 @@ export async function scrapeUrl(url: string) {
       }
     }
 
-    await page.evaluate(() => {
-      return new Promise((resolve) => setTimeout(resolve, 1000));
+    await page.evaluate(async () => {
+      for (let i = 0; i < 6; i++) {
+        window.scrollBy(0, window.innerHeight);
+        await new Promise((r) => setTimeout(r, 400));
+      }
     });
-
-    // if (marketplace === "amazon") {
-    //   await page.waitForSelector(
-    //     "#add-to-cart-button, #buy-now-button, #availability",
-    //     { timeout: 45000 }
-    //   );
-    // } else {
-    //   const firstSelector = siteConfig.selectors.title[0];
-    //   if (firstSelector) {
-    //     await page.waitForSelector(firstSelector, { timeout: 45000 });
-    //   }
-    // }
 
     const isBlocked = await page.evaluate(() => {
       const blockedTexts = [
@@ -201,8 +196,7 @@ export async function scrapeUrl(url: string) {
       const firstSixLinks = Array.from(allReadMoreLinks).slice(0, 6);
       firstSixLinks.forEach((link) => (link as HTMLElement).click());
     });
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
     const data = await page.evaluate(
       (config: SiteConfig, marketplace: string) => {
@@ -263,21 +257,22 @@ export async function scrapeUrl(url: string) {
           return text.slice(0, maxLen).trimEnd() + "...";
         }
 
-        const topReviews = Array.from(
-          document.querySelectorAll(s.topReviews.reviewContainer)
-        )
-          .slice(1, 20)
-          .map((el) =>
-            truncateWithEllipsis(
-              el
-                .querySelector(s.topReviews.reviewText)
-                ?.textContent?.replace("Read more", "")
-                .replace("READ MORE", "")
-                .trim() || "",
-              maxLength
-            )
+        let topReviews: string[] = [];
+        if (s.topReviews?.reviewContainer && s.topReviews?.reviewText) {
+          topReviews = Array.from(
+            document.querySelectorAll(s.topReviews.reviewContainer)
           )
-          .filter(Boolean);
+            .slice(0, 20)
+            .map((el) => {
+              const raw =
+                el
+                  .querySelector(s.topReviews.reviewText)
+                  ?.textContent?.replace(/Read more|READ MORE/gi, "")
+                  .trim() || "";
+              return truncateWithEllipsis(raw, maxLength);
+            })
+            .filter((t) => Boolean(t));
+        }
         extractedData.topReviews = topReviews;
 
         let specs: any = {};

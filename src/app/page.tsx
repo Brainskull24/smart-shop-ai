@@ -391,7 +391,7 @@ const ProductCard = ({
         </h3>
         {data.topReviews && data.topReviews.length > 0 ? (
           <div className="space-y-4">
-            {data.topReviews.slice(0, 5).map((comment: string, i: number) => (
+            {data.topReviews.slice(1, 6).map((comment: string, i: number) => (
               <blockquote
                 key={i}
                 className="border-l-4 border-purple-500 pl-4 text-sm text-gray-300 italic"
