@@ -122,9 +122,6 @@ export async function scrapeUrl(url: string) {
 
     await page.goto(expandedUrl, { waitUntil: "domcontentloaded" });
 
-    const finalUrl = page.url();
-    console.log("Redirected to final URL:", finalUrl);
-
     if (marketplace === "amazon") {
       await page.waitForSelector(
         "#add-to-cart-button, #buy-now-button, #availability",
