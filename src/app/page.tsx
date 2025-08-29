@@ -336,7 +336,7 @@ const ProductCard = ({
             <SkeletonLoader className="h-5 w-3/4 mx-auto mt-2" />
           ) : (
             <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-              "{data.bestFor}"
+              &quot;{data.bestFor}&quot;
             </p>
           )}
         </div>
