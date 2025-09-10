@@ -25,7 +25,9 @@ const getLaunchOptions = async () => {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
+        "--disable-web-security", // Add this
+        "--disable-features=VizDisplayCompositor", // Add this
+        "--disable-blink-features=AutomationControlled", // Add this
         "--no-first-run",
         "--no-zygote",
         "--single-process",
@@ -99,9 +101,21 @@ export async function scrapeUrl(url: string) {
     page.setDefaultTimeout(30000);
 
     await page.setExtraHTTPHeaders({
+      // Accept:
+      //   "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      // "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
+      // "Accept-Encoding": "gzip, deflate, br",
+      // DNT: "1",
+      // Connection: "keep-alive",
+      // "Upgrade-Insecure-Requests": "1",
+      // "Sec-Fetch-Dest": "document",
+      // "Sec-Fetch-Mode": "navigate",
+      // "Sec-Fetch-Site": "none",
+      // "Sec-Fetch-User": "?1",
+      // "Cache-Control": "max-age=0",
       Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-      "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
       "Accept-Encoding": "gzip, deflate, br",
       DNT: "1",
       Connection: "keep-alive",
@@ -109,8 +123,10 @@ export async function scrapeUrl(url: string) {
       "Sec-Fetch-Dest": "document",
       "Sec-Fetch-Mode": "navigate",
       "Sec-Fetch-Site": "none",
-      "Sec-Fetch-User": "?1",
-      "Cache-Control": "max-age=0",
+      "Sec-Ch-Ua":
+        '"Google Chrome";v="120", "Chromium";v="120", "Not A Brand";v="99"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"Windows"',
     });
 
     page.on("request", (req) => {
@@ -171,12 +187,39 @@ export async function scrapeUrl(url: string) {
       await safeGoto(page, expandedUrl);
     }
 
+    // await page.evaluate(() => {
+    //   const allReadMoreLinks = document.querySelectorAll(
+    //     '[data-hook="review-expand-link"], .QqFHMw._4FgsLt, .QqFHMw.ik7Tlh'
+    //   );
+    //   const firstSixLinks = Array.from(allReadMoreLinks).slice(0, 6);
+    //   firstSixLinks.forEach((link) => (link as HTMLElement).click());
+    // });
+
     await page.evaluate(() => {
-      const allReadMoreLinks = document.querySelectorAll(
-        '[data-hook="review-expand-link"], .QqFHMw._4FgsLt, .QqFHMw.ik7Tlh'
-      );
-      const firstSixLinks = Array.from(allReadMoreLinks).slice(0, 6);
-      firstSixLinks.forEach((link) => (link as HTMLElement).click());
+      return new Promise((resolve) => {
+        const expandReviews = () => {
+          // Amazon selectors
+          const amazonReadMore = document.querySelectorAll(
+            '[data-hook="review-expand-link"]'
+          );
+          // Flipkart selectors
+          const flipkartReadMore = document.querySelectorAll(
+            ".QqFHMw._4FgsLt, .QqFHMw.ik7Tlh, ._1EPkAk"
+          );
+
+          const allLinks = [...amazonReadMore, ...flipkartReadMore];
+          const firstSixLinks = Array.from(allLinks).slice(0, 6);
+
+          firstSixLinks.forEach((link, index) => {
+            setTimeout(() => {
+              (link as HTMLElement).click();
+            }, index * 100); // Stagger clicks
+          });
+        };
+
+        expandReviews();
+        setTimeout(resolve, 1000); // Wait for expansion
+      });
     });
 
     await new Promise((resolve) => setTimeout(resolve, 200));
