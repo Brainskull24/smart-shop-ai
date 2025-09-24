@@ -20,7 +20,7 @@ export interface ScrapedData {
   warranty?: string;
   returnPolicy?: string;
   deliveryTime?: string;
-  specifications?: Record<string, string>;
+  specifications?: Record<string, string> | string;
 }
 
 export interface RefinedData {

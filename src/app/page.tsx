@@ -565,8 +565,6 @@ export default function App() {
       setLoadingMessage("Analyzing with AI...");
       const scrapedData: ScrapedData = await response.json();
 
-      console.log("Scraped Data:", scrapedData);
-
       const initialProductState: HistoryItem = {
         refinedData: {
           ...scrapedData,
@@ -597,19 +595,32 @@ export default function App() {
         return text.replace(/\s+/g, " ").trim().slice(0, maxLength);
       };
 
+      let specificationsForAI;
+      if (productUrl.includes("flipkart.com")) {
+        specificationsForAI =
+          typeof scrapedData.specifications === "object" &&
+          scrapedData.specifications !== null
+            ? scrapedData.specifications["text"]
+            : undefined;
+      } else {
+        specificationsForAI = scrapedData.specifications;
+      }
+
       const dataForAI = {
         title: scrapedData.title,
         priceBlockText: scrapedData.priceBlockText,
         discount: scrapedData.discount,
         fullDescription: sanitizeForAI(scrapedData.fullDescription, 1500),
         serviceInfoText: sanitizeForAI(scrapedData.serviceInfoText, 500),
-        specifications: scrapedData.specifications,
+        specifications: specificationsForAI,
         featureBullets: scrapedData.featureBullets,
         reviewsMedleyText: sanitizeForAI(scrapedData.reviewsMedleyText, 2000),
         topReviews: scrapedData.topReviews,
       };
 
+
       const prompt = createProductSummaryPrompt(dataForAI);
+
 
       const aiReader = await ai.chat(prompt, {
         model: "gpt-4o-mini",
@@ -627,8 +638,6 @@ export default function App() {
         throw new Error("AI did not return a valid JSON object.");
       }
       const refinedJson: RefinedData = JSON.parse(jsonMatch[0]);
-
-      console.log("Refined Data from AI:", refinedJson);
 
       const productData: HistoryItem = {
         refinedData: { ...scrapedData, ...refinedJson },
