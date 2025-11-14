@@ -1,25 +1,33 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { HistoryItem } from "@/types/product";
+
+interface PuterUser {
+  username: string;
+  email?: string;
+  [key: string]: unknown;
+}
 
 interface PuterStore {
   puterReady: boolean;
   isLoading: boolean;
   error: string | null;
-  user: any | null;
+  user: PuterUser | null;
   isAuthenticated: boolean;
-  history: any[];
+  history: HistoryItem[];
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   fetchHistory: () => Promise<void>;
-  addToHistory: (item: any) => Promise<void>;
+  addToHistory: (item: HistoryItem) => Promise<void>;
+  clearError: () => void;
   kv: {
-    get: (key: string) => Promise<any | null>;
-    set: (key: string, value: any) => Promise<boolean>;
+    get: (key: string) => Promise<unknown | null>;
+    set: (key: string, value: unknown) => Promise<boolean>;
     list: (prefix: string) => Promise<string[]>;
     delete: (key: string) => Promise<boolean>;
   };
   ai: {
-    chat: (prompt: string, options: any) => Promise<any>;
+    chat: (prompt: string, options: Record<string, unknown>) => Promise<unknown>;
   };
   init: () => void;
 }
@@ -35,51 +43,85 @@ export const usePuter = create<PuterStore>()(
       isAuthenticated: false,
       history: [],
 
+      clearError: () => set({ error: null }),
+
       init: () => {
         const checkAuthStatus = async () => {
-          if (window.puter) {
-            try {
-              const signedIn = window.puter.auth.isSignedIn();
-              if (signedIn) {
-                const user = await window.puter.auth.getUser();
-                set({ isAuthenticated: true, user, isLoading: false });
-                // Always fetch from Puter KV on init
-                await get().fetchHistory();
-              } else {
-                set({ isLoading: false, history: [] });
-              }
-            } catch (error) {
-              set({ isLoading: false, error: "Authentication check failed" });
+          if (!window.puter) {
+            set({ 
+              isLoading: false, 
+              error: "Puter.js failed to load. Please refresh the page." 
+            });
+            return;
+          }
+
+          try {
+            const signedIn = window.puter.auth.isSignedIn();
+            if (signedIn) {
+              const user = await window.puter.auth.getUser();
+              set({ isAuthenticated: true, user, isLoading: false, error: null });
+              // Fetch history from Puter KV
+              await get().fetchHistory();
+            } else {
+              set({ isLoading: false, history: [], isAuthenticated: false });
             }
+          } catch (error) {
+            console.error("Auth check failed:", error);
+            set({ 
+              isLoading: false, 
+              error: "Authentication check failed. Please try signing in again.",
+              isAuthenticated: false,
+              user: null
+            });
           }
         };
 
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+
         const interval = setInterval(() => {
+          attempts++;
+          
           if (window.puter) {
             clearInterval(interval);
             set({ puterReady: true });
             checkAuthStatus();
+          } else if (attempts >= maxAttempts) {
+            clearInterval(interval);
+            set({ 
+              isLoading: false, 
+              puterReady: false,
+              error: "Failed to load Puter.js. Please check your internet connection and refresh." 
+            });
           }
         }, 100);
       },
 
       signIn: async () => {
-        if (!window.puter) return;
-        set({ isLoading: true });
+        if (!window.puter) {
+          set({ error: "Puter.js is not available" });
+          return;
+        }
+        set({ isLoading: true, error: null });
         try {
           await window.puter.auth.signIn();
           const user = await window.puter.auth.getUser();
-          set({ isAuthenticated: true, user, isLoading: false });
+          set({ isAuthenticated: true, user, isLoading: false, error: null });
           // Fetch history from Puter KV after sign in
           await get().fetchHistory();
-        } catch (e: any) {
-          set({ error: e.message, isLoading: false });
+        } catch (error) {
+          console.error("Sign in failed:", error);
+          const errorMessage = error instanceof Error ? error.message : "Sign in failed";
+          set({ error: errorMessage, isLoading: false, isAuthenticated: false });
         }
       },
 
       signOut: async () => {
-        if (!window.puter) return;
-        set({ isLoading: true });
+        if (!window.puter) {
+          set({ error: "Puter.js is not available" });
+          return;
+        }
+        set({ isLoading: true, error: null });
         try {
           await window.puter.auth.signOut();
           set({
@@ -87,9 +129,12 @@ export const usePuter = create<PuterStore>()(
             user: null,
             history: [],
             isLoading: false,
+            error: null,
           });
-        } catch (e: any) {
-          set({ error: e.message, isLoading: false });
+        } catch (error) {
+          console.error("Sign out failed:", error);
+          const errorMessage = error instanceof Error ? error.message : "Sign out failed";
+          set({ error: errorMessage, isLoading: false });
         }
       },
 
@@ -146,9 +191,12 @@ export const usePuter = create<PuterStore>()(
         }
       },
 
-      addToHistory: async (item: any) => {
+      addToHistory: async (item: HistoryItem) => {
         const state = get();
-        if (!state.isAuthenticated || !window.puter) return;
+        if (!state.isAuthenticated || !window.puter) {
+          console.warn("Cannot add to history: not authenticated or Puter not available");
+          return;
+        }
 
         try {
           // Create unique key with timestamp
@@ -166,27 +214,27 @@ export const usePuter = create<PuterStore>()(
             // Update local state immediately for better UX
             const currentHistory = state.history;
             const newHistory = [item, ...currentHistory];
-            set({ history: newHistory });
+            set({ history: newHistory, error: null });
           } else {
             throw new Error("Failed to save to Puter KV");
           }
         } catch (error) {
           console.error("Error adding to history:", error);
-          set({ error: "Failed to save to history" });
+          const errorMessage = error instanceof Error ? error.message : "Failed to save to history";
+          set({ error: errorMessage });
         }
       },
 
       kv: {
-        get: async (key) => {
+        get: async (key: string) => {
           if (!window.puter) return null;
           try {
             const rawValue = await window.puter.kv.get(key);
             if (typeof rawValue === "string") {
-              // Try to parse it as JSON. If it fails, return the raw string.
               try {
                 return JSON.parse(rawValue);
-              } catch (e) {
-                return rawValue; // It's just a regular string, not JSON
+              } catch {
+                return rawValue;
               }
             }
             return rawValue;
@@ -196,7 +244,7 @@ export const usePuter = create<PuterStore>()(
           }
         },
 
-        set: async (key, value) => {
+        set: async (key: string, value: unknown) => {
           if (!window.puter) return false;
           try {
             const stringValue =
@@ -209,7 +257,7 @@ export const usePuter = create<PuterStore>()(
           }
         },
 
-        list: async (prefix) => {
+        list: async (prefix: string) => {
           if (!window.puter) return [];
           try {
             const result = await window.puter.kv.list(prefix);
@@ -220,7 +268,7 @@ export const usePuter = create<PuterStore>()(
           }
         },
 
-        delete: async (key) => {
+        delete: async (key: string) => {
           if (!window.puter) return false;
           try {
             await window.puter.kv.del(key);
@@ -233,24 +281,28 @@ export const usePuter = create<PuterStore>()(
       },
 
       ai: {
-        chat: async (prompt, options) => {
-          if (!window.puter) throw new Error("Puter.js not available.");
-          return window.puter.ai.chat(prompt, options);
+        chat: async (prompt: string, options: Record<string, unknown>) => {
+          if (!window.puter) {
+            throw new Error("Puter.js is not available. Please refresh the page.");
+          }
+          try {
+            return await window.puter.ai.chat(prompt, options);
+          } catch (error) {
+            console.error("AI chat error:", error);
+            throw new Error("AI processing failed. Please try again.");
+          }
         },
       },
     }),
     {
       name: "smart-product-summary-storage",
-      partialize: (state) => ({
-        isAuthenticated: state.isAuthenticated,
-        user: state.user,
+      partialize: () => ({
+        // Don't persist auth state - always check with Puter on init
+        // This prevents stale auth issues
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state?.isAuthenticated) {
-          setTimeout(() => {
-            state.fetchHistory();
-          }, 1000);
-        }
+      onRehydrateStorage: () => () => {
+        // Clear any stale data on rehydration
+        // State will be refreshed on init
       },
     }
   )

@@ -22,57 +22,9 @@ import {
 } from "../types/product";
 import { createProductSummaryPrompt } from "../lib/prompts";
 import { SIGN_IN_PROMPT } from "../lib/constants";
-
-const SAMPLE_PRODUCT_DATA: HistoryItem = {
-  refinedData: {
-    title: "Sony WH-1000XM5 Wireless Noise Cancelling Headphones",
-    price: "₹29,990",
-    discount: "₹34,990",
-    reviewSummary:
-      "Users overwhelmingly praise the WH-1000XM5 for its exceptional, industry-leading noise cancellation and comfortable design, making it ideal for travel and focused work. While the sound quality is excellent, some long-time fans note that the new design is less portable as it no longer folds.",
-    ratingsBreakdown: {
-      "5 stars": "78%",
-      "4 stars": "15%",
-      "3 stars": "4%",
-      "2 stars": "1%",
-      "1 star": "2%",
-    },
-    specs: {
-      Brand: "Sony",
-      "Model Name": "WH-1000XM5",
-      "Form Factor": "Over Ear",
-      Connectivity: "Wireless, Bluetooth 5.2",
-      "Battery Life": "Up to 30 hours",
-      "Special Feature": "Active Noise Cancellation",
-    },
-    pros: [
-      "Best-in-class noise cancellation",
-      "Extremely comfortable for long listening sessions",
-      "Clear, detailed audio quality with powerful bass",
-      "Seamless multi-device pairing",
-    ],
-    cons: [
-      "New design does not fold, making it less compact for travel",
-      "Premium price point",
-      "Auto NC Optimizer can be overly sensitive for some users",
-    ],
-    bestFor:
-      "Ideal for frequent travelers, commuters, and professionals who need to block out distractions and enjoy high-fidelity audio.",
-    sentimentScore: 9,
-    returnPolicy: "7 days replacement",
-    warranty: "1 Year Manufacturer Warranty",
-    replacementinfo: "7 days replacement",
-    imageUrl: "https://m.media-amazon.com/images/I/51aXvjzcukL._SX679_.jpg",
-    brand: "Sony",
-    modelNumber: "WH-1000XM5",
-    rating: "4.6",
-    totalRatings: "8,450 ratings",
-    availability: "In Stock",
-  },
-  sourceUrl:
-    "https://www.amazon.in/Sony-WH-1000XM5-Wireless-Cancelling-Headphones/dp/B09WN3SK23/",
-  scrapedAt: new Date().toISOString(),
-};
+import { SAMPLE_PRODUCT_DATA } from "../constants/sampleData";
+import { ProductErrorBoundary } from "../components/ProductErrorBoundary";
+import { FormErrorBoundary } from "../components/FormErrorBoundary";
 
 const formatRelativeTime = (isoDate: string) => {
   const date = new Date(isoDate);
@@ -256,11 +208,14 @@ const ProductCard = ({
       <div className="flex flex-col md:flex-row w-full justify-between">
         {data.imageUrl && (
           <div className="md:w-1/2 flex-shrink-0 p-4 flex items-center justify-center bg-gray-800/20">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={data.imageUrl}
               alt={data.title || "Product Image"}
               className="object-contain w-4/5 h-auto max-h-[400px] md:max-h-[500px] rounded-lg"
-              onError={(e) => (e.currentTarget.style.display = "none")}
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) =>
+                (e.currentTarget.style.display = "none")
+              }
             />
           </div>
         )}
@@ -423,15 +378,30 @@ const ProductCard = ({
 
 const getFriendlyErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
-    if (error.message.includes("Failed to scrape")) {
+    const msg = error.message.toLowerCase();
+
+    if (msg.includes("abort") || msg.includes("timeout")) {
+      return "Request timed out. The website might be slow or blocking requests. Please try again.";
+    }
+    if (msg.includes("failed to scrape") || msg.includes("scraping failed")) {
       return "Could not fetch data from the URL. The product might be unavailable or the link is incorrect.";
     }
-    if (error.message.includes("valid JSON object")) {
+    if (msg.includes("valid json") || msg.includes("ai")) {
       return "AI failed to process the product data. The page format may be unsupported. Please try another link.";
     }
+    if (msg.includes("rate limit") || msg.includes("too many")) {
+      return "Too many requests. Please wait a moment and try again.";
+    }
+    if (msg.includes("network") || msg.includes("fetch")) {
+      return "Network error. Please check your internet connection and try again.";
+    }
+    if (msg.includes("puter")) {
+      return "AI service is unavailable. Please refresh the page and try again.";
+    }
+
     return error.message;
   }
-  return "An unexpected error occurred.";
+  return "An unexpected error occurred. Please try again.";
 };
 
 const SkeletonLoader = ({ className }: { className?: string }) => (
@@ -455,7 +425,15 @@ const ParagraphSkeleton = () => (
   </div>
 );
 
-const FeatureCard = ({ icon, title, children }: any) => (
+const FeatureCard = ({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) => (
   <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
     <div className="text-purple-400 mb-3">{icon}</div>
     <h3 className="font-semibold text-lg text-white mb-2">{title}</h3>
@@ -463,7 +441,17 @@ const FeatureCard = ({ icon, title, children }: any) => (
   </div>
 );
 
-const StatCard = ({ icon, value, label, sublabel }: any) => (
+const StatCard = ({
+  icon,
+  value,
+  label,
+  sublabel,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  sublabel?: string;
+}) => (
   <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 text-center">
     <div className="text-purple-400 mx-auto mb-3 w-10 h-10 flex items-center justify-center">
       {icon}
@@ -526,32 +514,69 @@ export default function App() {
     setActiveProduct(null);
 
     try {
-      const cacheKey = `cache_${btoa(productUrl)}`;
+      // Normalize URL for caching
+      const normalizeUrl = (url: string): string => {
+        try {
+          const urlObj = new URL(url);
+          const paramsToRemove = [
+            "ref",
+            "ref_",
+            "tag",
+            "psc",
+            "qid",
+            "sr",
+            "keywords",
+          ];
+          paramsToRemove.forEach((param) => urlObj.searchParams.delete(param));
+          urlObj.searchParams.sort();
+          return urlObj.toString();
+        } catch {
+          return url;
+        }
+      };
+
+      const normalizedUrl = normalizeUrl(productUrl);
+
+      console.log(normalizedUrl);
+
+      const cacheKey = `cache_${btoa(normalizedUrl)}`;
+
+      console.log(cacheKey);
 
       if (!options.bypassCache) {
-        const cachedData = await kv.get(cacheKey);
-        const oneHour = 60 * 60 * 1000;
-        if (
-          cachedData &&
-          new Date().getTime() - new Date(cachedData.scrapedAt).getTime() <
-            oneHour
-        ) {
-          setActiveProduct(cachedData);
-          setIsSubmitting(false);
-          setUrl("");
-          return;
+        try {
+          const cachedData = await kv.get(cacheKey);
+          const oneHour = 60 * 60 * 1000;
+          if (
+            cachedData &&
+            typeof cachedData === "object" &&
+            "scrapedAt" in cachedData &&
+            new Date().getTime() -
+              new Date(cachedData.scrapedAt as string).getTime() <
+              oneHour
+          ) {
+            setActiveProduct(cachedData as HistoryItem);
+            setIsSubmitting(false);
+            setUrl("");
+            return;
+          }
+        } catch (cacheError) {
+          console.warn("Cache retrieval failed:", cacheError);
+          // Continue with fresh scrape
         }
       }
 
       setLoadingMessage("Extracting data from source...");
       const route = "/api/scrape";
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // Increased timeout
+
+      console.log("Before Fetch API");
 
       const response = await fetch(route, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: productUrl }),
+        body: JSON.stringify({ url: normalizedUrl }),
         signal: controller.signal,
       });
 
@@ -559,11 +584,15 @@ export default function App() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to scrape.");
+        throw new Error(
+          errorData.error || `Failed to scrape (${response.status})`
+        );
       }
 
       setLoadingMessage("Analyzing with AI...");
       const scrapedData: ScrapedData = await response.json();
+
+      console.log(scrapedData);
 
       const initialProductState: HistoryItem = {
         refinedData: {
@@ -606,6 +635,8 @@ export default function App() {
         specificationsForAI = scrapedData.specifications;
       }
 
+      console.log("Before AI");
+
       const dataForAI = {
         title: scrapedData.title,
         priceBlockText: scrapedData.priceBlockText,
@@ -618,20 +649,20 @@ export default function App() {
         topReviews: scrapedData.topReviews,
       };
 
-
       const prompt = createProductSummaryPrompt(dataForAI);
 
-
-      const aiReader = await ai.chat(prompt, {
+      const aiReader = (await ai.chat(prompt, {
         model: "gpt-4o-mini",
         response_format: { type: "json_object" },
         stream: true,
-      });
+      })) as AsyncIterable<{ text?: string }>;
 
       let aiResponseJsonString = "";
       for await (const chunk of aiReader) {
         aiResponseJsonString += chunk?.text || "";
       }
+
+      console.log(aiResponseJsonString);
 
       const jsonMatch = aiResponseJsonString.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -641,22 +672,30 @@ export default function App() {
 
       const productData: HistoryItem = {
         refinedData: { ...scrapedData, ...refinedJson },
-        sourceUrl: productUrl,
+        sourceUrl: normalizedUrl,
         scrapedAt: new Date().toISOString(),
       };
 
       setActiveProduct(productData);
       setUrl("");
 
-      await Promise.all([
-        kv.set(cacheKey, productData),
-        addToHistory(productData),
-      ]);
-      fetchHistory();
+      // Save to cache and history (don't block on these)
+      Promise.all([
+        kv
+          .set(cacheKey, productData)
+          .catch((e) => console.error("Cache save failed:", e)),
+        addToHistory(productData).catch((e) =>
+          console.error("History save failed:", e)
+        ),
+      ]).then(() => {
+        fetchHistory().catch((e) => console.error("History fetch failed:", e));
+      });
     } catch (err: unknown) {
+      console.error("Scrape and analyze error:", err);
       setError(getFriendlyErrorMessage(err));
     } finally {
       setIsSubmitting(false);
+      setLoadingMessage("Extracting Data...");
     }
   };
 
@@ -779,20 +818,21 @@ export default function App() {
 
       <div className="bg-gray-900 py-5">
         <div className="container mx-auto px-4 sm:px-8">
-          <div
-            className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6"
-            id="input-url"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Search className="text-purple-400" size={20} />
-              <h2 className="text-xl font-semibold text-white">
-                Product URL Analyzer
-              </h2>
-            </div>
-            <p className="text-gray-400 text-sm mb-4">
-              Enter an Amazon or Flipkart product URL to get AI-powered insights
-            </p>
-            <form onSubmit={handleSubmit} className="flex items-center gap-3">
+          <FormErrorBoundary>
+            <div
+              className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6"
+              id="input-url"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Search className="text-purple-400" size={20} />
+                <h2 className="text-xl font-semibold text-white">
+                  Product URL Analyzer
+                </h2>
+              </div>
+              <p className="text-gray-400 text-sm mb-4">
+                Enter an Amazon or Flipkart product URL to get AI-powered insights
+              </p>
+              <form onSubmit={handleSubmit} className="flex items-center gap-3">
               <div className="relative w-full">
                 <Input
                   type="url"
@@ -845,7 +885,8 @@ export default function App() {
                 </button>
               )}
             </form>
-          </div>
+            </div>
+          </FormErrorBoundary>
 
           <div className="text-center mt-20">
             <h2 className="text-3xl font-bold text-white">
@@ -894,13 +935,15 @@ export default function App() {
         )}
 
         {activeProduct && (
-          <div className="mt-8">
-            <ProductCard
-              data={activeProduct.refinedData}
-              sourceUrl={activeProduct.sourceUrl}
-              scrapedAt={activeProduct.scrapedAt}
-            />
-          </div>
+          <ProductErrorBoundary fallbackMessage="Failed to display product information">
+            <div className="mt-8">
+              <ProductCard
+                data={activeProduct.refinedData}
+                sourceUrl={activeProduct.sourceUrl}
+                scrapedAt={activeProduct.scrapedAt}
+              />
+            </div>
+          </ProductErrorBoundary>
         )}
       </div>
 
@@ -913,10 +956,4 @@ export default function App() {
       </footer>
     </div>
   );
-}
-
-declare global {
-  interface Window {
-    puter: any;
-  }
 }
