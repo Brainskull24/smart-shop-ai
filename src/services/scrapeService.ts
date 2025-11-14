@@ -54,10 +54,21 @@ async function getLaunchOptions() {
     // Production: Use @sparticuz/chromium for Vercel
     console.log("Using @sparticuz/chromium for Vercel production");
     return {
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--disable-setuid-sandbox',
+        '--no-first-run',
+        '--no-sandbox',
+        '--no-zygote',
+        '--single-process',
+        '--disable-extensions',
+      ],
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath('/tmp'),
       headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     };
   } else {
     // Development: Try to find local Chrome/Chromium
