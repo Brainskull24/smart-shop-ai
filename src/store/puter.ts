@@ -111,7 +111,20 @@ export const usePuter = create<PuterStore>()(
           await get().fetchHistory();
         } catch (error) {
           console.error("Sign in failed:", error);
-          const errorMessage = error instanceof Error ? error.message : "Sign in failed";
+          
+          // Handle popup blocked error specifically
+          let errorMessage = "Sign in failed";
+          if (error && typeof error === 'object' && 'error' in error) {
+            const err = error as { error?: string; msg?: string };
+            if (err.error === 'popup_blocked') {
+              errorMessage = "Popup was blocked. Please click the popup blocker icon in your browser's address bar and allow popups, then try again. If the issue persists, try disabling your ad blocker or use a different browser.";
+            } else if (err.msg) {
+              errorMessage = err.msg;
+            }
+          } else if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          
           set({ error: errorMessage, isLoading: false, isAuthenticated: false });
         }
       },

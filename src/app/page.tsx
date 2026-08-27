@@ -153,7 +153,8 @@ const ProsConsList = ({
 };
 
 const AuthComponent = () => {
-  const { isAuthenticated, user, signIn, signOut } = usePuter();
+  const { isAuthenticated, user, signIn, signOut, error, clearError } = usePuter();
+  
   if (isAuthenticated && user) {
     return (
       <div className="flex items-center gap-3 bg-white/5 p-2 rounded-lg border border-white/10">
@@ -188,13 +189,43 @@ const AuthComponent = () => {
       </div>
     );
   }
+  
   return (
-    <Button
-      onClick={signIn}
-      className="bg-white text-gray-900 hover:bg-gray-100 font-semibold"
-    >
-      Sign In
-    </Button>
+    <div className="flex flex-col gap-2">
+      <Button
+        onClick={signIn}
+        className="bg-white text-gray-900 hover:bg-gray-100 font-semibold"
+      >
+        Sign In
+      </Button>
+      {error && (
+        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-2 max-w-md">
+          <button 
+            onClick={clearError}
+            className="float-right text-red-400 hover:text-red-300 ml-2 font-bold"
+            title="Dismiss"
+          >
+            ×
+          </button>
+          <div className="pr-4">
+            <strong className="block mb-1">Authentication Error:</strong>
+            {error}
+            {error.includes('popup') && (
+              <div className="mt-2 pt-2 border-t border-red-500/20 text-xs">
+                <strong>Troubleshooting:</strong>
+                <ul className="list-disc list-inside mt-1 space-y-1 opacity-80">
+                  <li>Check browser address bar for popup blocker icon</li>
+                  <li>Disable ad blockers temporarily</li>
+                  <li>Try in incognito/private mode</li>
+                  <li>Try a different browser (Chrome/Firefox/Edge)</li>
+                  <li>Check browser console for more details (F12)</li>
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

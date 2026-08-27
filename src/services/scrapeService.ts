@@ -382,9 +382,37 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
       throw new Error("Unsupported website. Only Amazon, Flipkart, and Myntra are supported.");
     }
 
-    // Launch browser
+    // Launch browser with retry logic for ETXTBSY errors
     const launchOptions = await getLaunchOptions();
-    browser = await puppeteer.launch(launchOptions);
+    
+    let launchAttempts = 0;
+    const maxLaunchAttempts = 3;
+    
+    while (launchAttempts < maxLaunchAttempts) {
+      try {
+        browser = await puppeteer.launch(launchOptions);
+        break; // Success, exit retry loop
+      } catch (launchError: unknown) {
+        launchAttempts++;
+        const errorMessage = launchError instanceof Error ? launchError.message : String(launchError);
+        
+        // Check if it's the ETXTBSY error (file busy)
+        if (errorMessage.includes('ETXTBSY') && launchAttempts < maxLaunchAttempts) {
+          // Wait with exponential backoff: 500ms, 1000ms, 2000ms
+          const waitTime = 500 * Math.pow(2, launchAttempts - 1);
+          console.warn(`Browser launch failed (ETXTBSY), retrying in ${waitTime}ms... (attempt ${launchAttempts}/${maxLaunchAttempts})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        // If not ETXTBSY or max attempts reached, throw the error
+        throw launchError;
+      }
+    }
+    
+    if (!browser) {
+      throw new Error('Failed to launch browser after multiple attempts');
+    }
 
     const page = await browser.newPage();
 

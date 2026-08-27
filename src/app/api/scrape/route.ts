@@ -193,7 +193,15 @@ export async function POST(req: NextRequest) {
     let statusCode = 500;
 
     if (error instanceof Error) {
+      // Handle ETXTBSY error (Chromium binary locked - concurrent access issue)
       if (
+        error.message.includes("ETXTBSY") ||
+        error.message.includes("spawn ETXTBSY")
+      ) {
+        errorMessage =
+          "Server is busy processing another request. Please try again in a few seconds.";
+        statusCode = 503; // Service Unavailable
+      } else if (
         error.message.includes("timeout") ||
         error.message.includes("Timeout")
       ) {
