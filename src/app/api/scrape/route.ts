@@ -3,6 +3,7 @@ import { kv } from "@vercel/kv";
 import { Ratelimit } from "@upstash/ratelimit";
 import { scrapeUrl } from "@/services/scrapeService";
 import { ScrapedData } from "@/types/product";
+import { savePriceHistory } from "@/services/priceTrackingService";
 
 // Validate environment variables
 if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
@@ -65,11 +66,12 @@ function isValidProductUrl(url: string): boolean {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.toLowerCase();
 
-    // Check if it's Amazon or Flipkart
+    // Check if it's Amazon, Flipkart, or Myntra
     const isAmazon = hostname.includes("amazon.") || hostname.includes("amzn.");
     const isFlipkart = hostname.includes("flipkart.com");
+    const isMyntra = hostname.includes("myntra.com");
 
-    if (!isAmazon && !isFlipkart) {
+    if (!isAmazon && !isFlipkart && !isMyntra) {
       return false;
     }
     return true;
@@ -143,7 +145,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Invalid product URL. Please provide a valid Amazon or Flipkart product link.",
+            "Invalid product URL. Please provide a valid Amazon, Flipkart, or Myntra product link.",
         },
         { status: 400 }
       );
@@ -154,6 +156,13 @@ export async function POST(req: NextRequest) {
 
     // Scrape the product
     const data: ScrapedData = await scrapeUrl(normalizedUrl);
+
+    // Save price history (don't block on this)
+    if (data.priceBlockText) {
+      savePriceHistory(normalizedUrl, data.priceBlockText, data.discount).catch((err) =>
+        console.error("Failed to save price history:", err)
+      );
+    }
 
     // Add metadata
     const response = {

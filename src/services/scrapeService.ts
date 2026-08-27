@@ -42,17 +42,9 @@ async function getLaunchOptions() {
   const isVercelProduction = process.env.VERCEL_ENV === "production";
   const isProduction = process.env.NODE_ENV === "production";
 
-  console.log("Environment detection:", {
-    VERCEL_ENV: process.env.VERCEL_ENV,
-    NODE_ENV: process.env.NODE_ENV,
-    isVercelProduction,
-    isProduction,
-  });
-
   // Only use @sparticuz/chromium in Vercel production
   if (isVercelProduction) {
     // Production: Use @sparticuz/chromium for Vercel
-    console.log("Using @sparticuz/chromium for Vercel production");
     return {
       args: [
         ...chromium.args,
@@ -78,7 +70,6 @@ async function getLaunchOptions() {
     // First check if CHROME_EXECUTABLE_PATH is set
     if (process.env.CHROME_EXECUTABLE_PATH) {
       if (fs.existsSync(process.env.CHROME_EXECUTABLE_PATH)) {
-        console.log("Using Chrome from CHROME_EXECUTABLE_PATH:", process.env.CHROME_EXECUTABLE_PATH);
         return {
           executablePath: process.env.CHROME_EXECUTABLE_PATH,
           headless: true,
@@ -113,7 +104,6 @@ async function getLaunchOptions() {
     for (const path of possiblePaths) {
       if (fs.existsSync(path)) {
         executablePath = path;
-        console.log("Found Chrome at:", path);
         break;
       }
     }
@@ -127,7 +117,6 @@ async function getLaunchOptions() {
         }).trim();
         if (whichResult && fs.existsSync(whichResult)) {
           executablePath = whichResult;
-          console.log("Found Chrome using 'which':", whichResult);
         }
       } catch {
         // Command failed, continue
@@ -144,7 +133,6 @@ async function getLaunchOptions() {
         const match = regResult.match(/REG_SZ\s+(.+)/);
         if (match && match[1] && fs.existsSync(match[1].trim())) {
           executablePath = match[1].trim();
-          console.log("Found Chrome using Windows registry:", executablePath);
         }
       } catch {
         // Registry query failed, continue
@@ -311,12 +299,12 @@ async function extractProductData(
       extractedData.category = s.category ? getText(s.category) : "Not specified";
       extractedData.subcategory = s.subcategory ? getText(s.subcategory) : "Not specified";
 
-      // Top reviews
+      // Top reviews - extract up to 30 for better AI analysis
       const maxReviewLength = 600;
       const topReviews = Array.from(
         document.querySelectorAll(s.topReviews.reviewContainer)
       )
-        .slice(0, 20)
+        .slice(0, 30)
         .map((el) => {
           const reviewText = el
             .querySelector(s.topReviews.reviewText)
@@ -358,8 +346,6 @@ async function extractProductData(
           .filter(Boolean);
       }
 
-      console.log(extractedData);
-
       return extractedData;
     },
     JSON.parse(JSON.stringify(siteConfig)),
@@ -374,7 +360,6 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   let browser: Browser | null = null;
 
   try {
-    console.log("Starting scrape for URL:", url);
     
     // Validate URL
     if (!url || typeof url !== "string") {
@@ -382,28 +367,24 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     }
 
     // Determine marketplace
-    const marketplace = url.includes("flipkart.com") ? "flipkart" : "amazon";
-    console.log("Marketplace:", marketplace);
+    const marketplace = url.includes("flipkart.com") 
+      ? "flipkart" 
+      : url.includes("myntra.com")
+      ? "myntra"
+      : "amazon";
 
     // Resolve shortened URLs
     const expandedUrl = await resolveFinalUrl(url);
-    console.log("Expanded URL:", expandedUrl);
 
     // Get site configuration
     const siteConfig = getSiteConfig(expandedUrl);
     if (!siteConfig) {
-      throw new Error("Unsupported website. Only Amazon and Flipkart are supported.");
+      throw new Error("Unsupported website. Only Amazon, Flipkart, and Myntra are supported.");
     }
 
     // Launch browser
-    console.log("Getting launch options...");
     const launchOptions = await getLaunchOptions();
-    console.log("Launching browser with options:", { 
-      executablePath: launchOptions.executablePath,
-      headless: launchOptions.headless 
-    });
     browser = await puppeteer.launch(launchOptions);
-    console.log("Browser launched successfully");
 
     const page = await browser.newPage();
 

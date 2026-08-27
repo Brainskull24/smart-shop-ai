@@ -146,16 +146,26 @@ export const usePuter = create<PuterStore>()(
         }
 
         try {
-          // Get all keys that start with 'sps_history_' (Smart Product Summary history)
-          const keys = await window.puter.kv.list("sps_history_");
+          // Get all keys with values that start with 'sps_history_'
+          // Using returnValues: true to get both keys and values in one call
+          // @ts-expect-error - Puter API accepts options object but type definition is outdated
+          const result: unknown = await window.puter.kv.list({
+            pattern: "sps_history_*",
+            returnValues: true
+          });
 
-          if (keys && Array.isArray(keys) && keys.length > 0) {
+          // Handle both paginated response (KVListPage) and array response
+          const kvPairs = (result as { items?: unknown[] }).items || (result as unknown[]);
+
+          if (kvPairs && Array.isArray(kvPairs) && kvPairs.length > 0) {
             const historyItems = [];
 
-            // Fetch each history item
-            for (const key of keys) {
+            // Process each key-value pair
+            for (const kvPair of kvPairs) {
               try {
-                const rawValue = await window.puter.kv.get(key);
+                // kvPair has { key, value } structure when returnValues is true
+                const rawValue = (kvPair as { value?: unknown; key?: string }).value || kvPair;
+                
                 if (rawValue) {
                   let item;
                   if (typeof rawValue === "string") {
@@ -170,7 +180,7 @@ export const usePuter = create<PuterStore>()(
                   }
                 }
               } catch (itemError) {
-                console.warn(`Failed to parse history item ${key}:`, itemError);
+                console.warn(`Failed to parse history item:`, itemError);
               }
             }
 

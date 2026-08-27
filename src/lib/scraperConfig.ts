@@ -103,10 +103,41 @@ export const scraperConfig: Record<string, SiteConfig> = {
       },
     },
   },
+
+  myntra: {
+    selectors: {
+      title: [".pdp-title", "h1.pdp-name"],
+      rating: [".index-overallRating", ".ratings-rating"],
+      totalRatings: [".index-ratingsCount", ".ratings-count"],
+      totalReviews: [".index-ratingsCount", ".ratings-count"],
+      imageUrl: [".image-grid-image", ".pdp-img", 'meta[property="og:image"]'],
+      fullDescription: [".pdp-product-description-content", ".pdp-description-container"],
+      category: [".breadcrumbs-item:first-child", ".breadcrumbs-base a:first-child"],
+      subcategory: [".breadcrumbs-item:last-child", ".breadcrumbs-base a:last-child"],
+      availability: [".size-buttons-size-button", ".pdp-add-to-bag"],
+      deliveryTime: [".pdp-delivery-options-title", ".pdp-delivery-title"],
+      serviceInfoText: [".pdp-returns-policy", ".pdp-offers-content"],
+      priceBlockText: [".pdp-price strong", ".pdp-price .pdp-discount-price"],
+      discount: [".pdp-mrp", ".pdp-price .pdp-mrp"],
+      reviewsMedleyText: [".detailed-ratings-container", ".user-review-main"],
+      brand: [".pdp-title", ".pdp-brand-name"],
+      detailBullets: ".pdp-product-description-content li",
+      topReviews: {
+        reviewContainer: ".user-review-main",
+        reviewText: ".user-review-reviewTextWrapper",
+      },
+      specs: {
+        container: ".index-row",
+        key: ".index-rowKey",
+        value: ".index-rowValue",
+      },
+    },
+  },
 };
 
 export const getSiteConfig = (url: string): SiteConfig | null => {
   if (url.includes("amazon")) return scraperConfig.amazon;
   if (url.includes("flipkart")) return scraperConfig.flipkart;
+  if (url.includes("myntra")) return scraperConfig.myntra;
   return null;
 };

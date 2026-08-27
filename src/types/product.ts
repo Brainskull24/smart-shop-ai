@@ -23,6 +23,23 @@ export interface ScrapedData {
   specifications?: Record<string, string> | string;
 }
 
+export interface DealScore {
+  score: number;
+  label: string;
+  reasons: string[];
+  priceChange: {
+    percentage: number;
+    direction: "up" | "down" | "stable";
+  };
+}
+
+export interface PriceHistoryEntry {
+  price: number;
+  currency: string;
+  timestamp: string;
+  discount?: number;
+}
+
 export interface RefinedData {
   title: string;
   price: string;
@@ -38,6 +55,8 @@ export interface RefinedData {
   cons: string[];
   bestFor: string;
   sentimentScore: number;
+  dealScore?: DealScore;
+  priceHistory?: PriceHistoryEntry[];
 }
 
 export type ProductData = ScrapedData & RefinedData;
