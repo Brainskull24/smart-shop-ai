@@ -26,21 +26,12 @@ const BLOCKED_DOMAINS = [
 ];
 
 /**
- * Resolve shortened URLs to their final destination
- * For now, just return the URL as-is since we're not dealing with shortened URLs
- */
-async function resolveFinalUrl(shortUrl: string): Promise<string> {
-  // Simply return the URL - Puppeteer will handle redirects
-  return shortUrl;
-}
-
-/**
  * Get Puppeteer launch options based on environment
  */
 async function getLaunchOptions() {
   // Check if we're in Vercel production environment
   const isVercelProduction = process.env.VERCEL_ENV === "production";
-  const isProduction = process.env.NODE_ENV === "production";
+  // isProduction used for environment detection only
 
   // Only use @sparticuz/chromium in Vercel production
   if (isVercelProduction) {
@@ -373,11 +364,8 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
       ? "myntra"
       : "amazon";
 
-    // Resolve shortened URLs
-    const expandedUrl = await resolveFinalUrl(url);
-
     // Get site configuration
-    const siteConfig = getSiteConfig(expandedUrl);
+    const siteConfig = getSiteConfig(url);
     if (!siteConfig) {
       throw new Error("Unsupported website. Only Amazon, Flipkart, and Myntra are supported.");
     }
@@ -461,7 +449,7 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     });
 
     // Navigate to page
-    await safeGoto(page, expandedUrl);
+    await safeGoto(page, url);
 
     // Wait for key elements based on marketplace
     if (marketplace === "amazon") {
@@ -489,7 +477,7 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
       console.warn("Page blocked, retrying with new user agent...");
       const newUserAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
       await page.setUserAgent(newUserAgent);
-      await safeGoto(page, expandedUrl);
+      await safeGoto(page, url);
     }
 
     // Expand reviews

@@ -4,7 +4,6 @@ import "./globals.css";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,9 +30,7 @@ export default function RootLayout({
         <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
       </head>
       <body className={inter.className}>
-        <ErrorBoundary>
           {children}
-        </ErrorBoundary>
         <Analytics />
         <SpeedInsights />
       </body>

@@ -5,8 +5,6 @@ export const SAMPLE_PRODUCT_DATA: HistoryItem = {
     title: "Sony WH-1000XM5 Wireless Noise Cancelling Headphones",
     price: "₹29,990",
     discount: "₹34,990",
-    reviewSummary:
-      "Users overwhelmingly praise the WH-1000XM5 for its exceptional, industry-leading noise cancellation and comfortable design, making it ideal for travel and focused work. While the sound quality is excellent, some long-time fans note that the new design is less portable as it no longer folds.",
     ratingsBreakdown: {
       "5 stars": "78%",
       "4 stars": "15%",
@@ -33,8 +31,7 @@ export const SAMPLE_PRODUCT_DATA: HistoryItem = {
       "Premium price point",
       "Auto NC Optimizer can be overly sensitive for some users",
     ],
-    bestFor:
-      "Ideal for frequent travelers, commuters, and professionals who need to block out distractions and enjoy high-fidelity audio.",
+    bestFor: "Ideal for frequent travelers, commuters, and professionals who need to block out distractions and enjoy high-fidelity audio.",
     sentimentScore: 9,
     returnPolicy: "7 days replacement",
     warranty: "1 Year Manufacturer Warranty",
@@ -46,7 +43,6 @@ export const SAMPLE_PRODUCT_DATA: HistoryItem = {
     totalRatings: "8,450 ratings",
     availability: "In Stock",
   },
-  sourceUrl:
-    "https://www.amazon.in/Sony-WH-1000XM5-Wireless-Cancelling-Headphones/dp/B09WN3SK23/",
+  sourceUrl: "https://www.amazon.in/Sony-WH-1000XM5-Wireless-Cancelling-Headphones/dp/B09WN3SK23/",
   scrapedAt: new Date().toISOString(),
 };

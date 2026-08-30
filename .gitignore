@@ -1,66 +1,151 @@
-# Node modules
+# ============================================================
+# Node / Next.js
+# ============================================================
 node_modules/
-
-# Output of Next.js build
 .next/
 out/
+dist/
+*.tsbuildinfo
 
-# Log files
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 bun.lockb
+*.log
 
-# Local env files (NEVER commit these!)
+# ============================================================
+# Environment / Secrets (NEVER commit these)
+# ============================================================
 .env
-.env*.local
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*.local
 .env.development
+.env.development.local
+.env.test
+.env.test.local
 .env.production
-# Keep .env.example for documentation
+.env.production.local
+# Keep the example for documentation
 !.env.example
 
-# OS-specific files
-.DS_Store
-Thumbs.db
+# ============================================================
+# Python / Scraper
+# ============================================================
 
-# Vercel
-.vercel/
+# Virtual environments
+scraper/.venv/
+scraper/venv/
+.venv/
+venv/
+env/
+ENV/
 
-# Build output
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Python egg / distribution
+*.egg
+*.egg-info/
 dist/
+build/
+*.whl
+.eggs/
+pip-wheel-metadata/
 
-# Testing
-coverage/
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
 *.lcov
+coverage.xml
 
-# IDE settings
+# mypy / type checkers
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+
+# ============================================================
+# Scraper results & test output (runtime artifacts)
+# ============================================================
+scraper/results/
+scraper/tests/__pycache__/
+
+# ============================================================
+# Java / Spring Boot (Phase 2)
+# ============================================================
+backend/target/
+backend/.gradle/
+backend/build/
+backend/*.class
+backend/*.jar
+backend/*.war
+backend/*.ear
+backend/hs_err_pid*
+backend/.mvn/wrapper/maven-wrapper.jar
+# Keep wrapper properties
+!backend/.mvn/wrapper/maven-wrapper.properties
+
+# ============================================================
+# Database / Docker
+# ============================================================
+# Local Postgres data volume
+postgres-data/
+docker-volumes/
+*.sql.bak
+
+# ============================================================
+# OS-specific
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# IDE / Editor
+# ============================================================
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
-
-# Misc
-*.log
-*.tgz
 *.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
 
-# Optional: TypeScript cache
-*.tsbuildinfo
+# ============================================================
+# Vercel
+# ============================================================
+.vercel/
 
-# Optional: Mac/Linux Trash folder
-.Trash-*
-
-# Optional: Playwright test artifacts
+# ============================================================
+# Playwright
+# ============================================================
 test-results/
 playwright-report/
-.vercel
-.env*.local
+blob-report/
+
+# ============================================================
+# Misc
+# ============================================================
+*.tgz
+*.Trash-*
 
 # Documentation files (except README.md)
 *.md
 !README.md
+!DEPLOYMENT_AND_V1_STATUS.md
