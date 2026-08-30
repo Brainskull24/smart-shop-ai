@@ -8,10 +8,7 @@ import {
   ShieldCheck,
   BarChart,
   Cpu,
-  Users,
-  Clock,
   Sparkles,
-  Box,
 } from "lucide-react";
 import { usePuter } from "../store/puter";
 import {
@@ -393,15 +390,6 @@ const FeatureCard = ({ icon, title, children }: { icon: React.ReactNode; title: 
     <p className="text-sm text-gray-400">{children}</p>
   </div>
 );
-const StatCard = ({ icon, value, label, sublabel }: { icon: React.ReactNode; value: string; label: string; sublabel?: string }) => (
-  <div className="bg-white/5 p-6 rounded-lg border border-white/10 text-center backdrop-blur-sm">
-    <div className="text-gray-400 mx-auto mb-3 w-10 h-10 flex items-center justify-center">{icon}</div>
-    <p className="text-3xl font-bold text-white">{value}</p>
-    <p className="text-sm text-gray-300 font-semibold">{label}</p>
-    <p className="text-xs text-gray-500">{sublabel}</p>
-  </div>
-);
-
 export default function App() {
   const { init, isAuthenticated, ai, addToHistory, isLoading, kv, fetchHistory } = usePuter();
   const [url, setUrl] = useState("");
@@ -477,7 +465,7 @@ export default function App() {
       console.log("🌐 Starting web scrape...");
       const scrapeStartTime = performance.now();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
 
       // Retry logic for 503/500 (server busy / ETXTBSY)
       let scrapeAttempts = 0;
@@ -748,11 +736,6 @@ export default function App() {
           <div className="text-center mt-20">
             <h2 className="text-3xl font-bold text-white">Trusted by Smart Shoppers</h2>
             <p className="mt-2 text-gray-400 max-w-xl mx-auto">Join thousands of users who make better purchasing decisions with our AI-powered analysis.</p>
-          </div>
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard icon={<Box size={32} />} value="1000+" label="Products Analyzed" />
-            <StatCard icon={<Clock size={32} />} value="< 15 sec" label="Average Analysis Time" />
-            <StatCard icon={<Users size={32} />} value="500+" label="Users" />
           </div>
         </div>
       </div>

@@ -59,14 +59,17 @@ def scrape_product(url: str) -> dict:
     logger.info("Canonical URL: %s", canonical)
 
     last_error: Exception | None = None
+    total_start = time.time()
 
     with create_browser() as browser:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             logger.info("Attempt %d/%d", attempt, MAX_ATTEMPTS)
             page = None
-            start_time = time.time()
+            attempt_start = time.time()
             try:
                 page = open_product_page(browser, canonical)
+                page_load_elapsed = round(time.time() - attempt_start, 2)
+                logger.info("Page load + navigation elapsed: %.2fs", page_load_elapsed)
 
                 # Check for challenge/interstitial
                 if is_challenge_page(page):
@@ -77,12 +80,13 @@ def scrape_product(url: str) -> dict:
 
                 # Extract data using all three layers
                 data = extract_product_data(page, asin)
-
-                elapsed = round(time.time() - start_time, 2)
-                logger.info("Extraction completed in %.2fs", elapsed)
+                extraction_elapsed = round(time.time() - attempt_start, 2)
+                logger.info("Extraction and parsing elapsed: %.2fs", extraction_elapsed)
 
                 # Validate
                 result = validate_product(data, asin)
+                validation_elapsed = round(time.time() - attempt_start, 2)
+                logger.info("Validation elapsed: %.2fs", validation_elapsed)
 
                 if not result.passed:
                     raise RuntimeError(
@@ -93,13 +97,21 @@ def scrape_product(url: str) -> dict:
                 data["quality_score"] = result.quality_score
                 data["warnings"] = result.warnings
                 data["scraped_at"] = datetime.now(timezone.utc).isoformat()
-                data["scrape_duration_seconds"] = elapsed
+                data["scrape_duration_seconds"] = round(time.time() - total_start, 2)
+                logger.info(
+                    "Attempt metrics: page=%.2fs extraction=%.2fs validation=%.2fs total=%.2fs",
+                    page_load_elapsed,
+                    extraction_elapsed,
+                    validation_elapsed,
+                    data["scrape_duration_seconds"],
+                )
 
                 return data
 
             except Exception as e:
                 last_error = e
-                logger.warning("Attempt %d failed: %s", attempt, e)
+                elapsed = round(time.time() - attempt_start, 2)
+                logger.warning("Attempt %d failed after %.2fs: %s", attempt, elapsed, e)
                 # 404 is not transient — no retry
                 if "404" in str(e):
                     break

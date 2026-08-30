@@ -37,13 +37,21 @@ function isValidAmazonInUrl(url: string): boolean {
 
 const SCRAPER_SERVICE_URL = process.env.SCRAPER_SERVICE_URL || "http://127.0.0.1:8000";
 const SCRAPER_SERVICE_TOKEN = process.env.SCRAPER_SERVICE_TOKEN;
-const SCRAPER_TIMEOUT_MS = Number(process.env.SCRAPER_TIMEOUT_MS || 30_000);
+const SCRAPER_TIMEOUT_MS = Number(process.env.SCRAPER_TIMEOUT_MS || 120_000);
 
 async function runPythonWorker(url: string): Promise<Record<string, unknown>> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SCRAPER_TIMEOUT_MS);
+  const startedAt = Date.now();
 
   try {
+    console.log("[scrape-route] starting upstream scraper", {
+      url,
+      timeoutMs: SCRAPER_TIMEOUT_MS,
+      scraperUrl: `${SCRAPER_SERVICE_URL.replace(/\/$/, "")}/scrape`,
+      tokenConfigured: Boolean(SCRAPER_SERVICE_TOKEN),
+    });
+
     const response = await fetch(`${SCRAPER_SERVICE_URL.replace(/\/$/, "")}/scrape`, {
       method: "POST",
       headers: {
@@ -55,21 +63,50 @@ async function runPythonWorker(url: string): Promise<Record<string, unknown>> {
       cache: "no-store",
     });
 
+    const elapsedMs = Date.now() - startedAt;
+    console.log("[scrape-route] upstream response received", {
+      status: response.status,
+      elapsedMs,
+      contentType: response.headers.get("content-type"),
+    });
+
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const message = payload && typeof payload.detail === "string"
         ? payload.detail
         : `Scraper service failed (${response.status})`;
+      console.error("[scrape-route] upstream scraper failed", {
+        status: response.status,
+        elapsedMs,
+        error: message,
+      });
       throw new Error(message);
     }
     if (!payload || typeof payload !== "object") {
+      console.error("[scrape-route] invalid upstream payload", { elapsedMs, payload });
       throw new Error("Scraper service returned invalid JSON");
     }
+
+    console.log("[scrape-route] upstream scraper succeeded", {
+      elapsedMs,
+      keys: Object.keys(payload),
+    });
     return payload as Record<string, unknown>;
   } catch (error) {
+    const elapsedMs = Date.now() - startedAt;
     if (error instanceof Error && error.name === "AbortError") {
+      console.error("[scrape-route] upstream scraper timeout", {
+        url,
+        elapsedMs,
+        timeoutMs: SCRAPER_TIMEOUT_MS,
+      });
       throw new Error("Scraper service timed out");
     }
+    console.error("[scrape-route] upstream scraper exception", {
+      url,
+      elapsedMs,
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   } finally {
     clearTimeout(timeoutId);
@@ -143,38 +180,63 @@ function mapToScrapedData(raw: Record<string, unknown>): ScrapedData {
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  const requestStartedAt = Date.now();
+
   try {
     const body = await req.json();
     const { url } = body;
 
     if (!url || typeof url !== "string") {
+      const metrics = { requestMs: Date.now() - requestStartedAt };
+      console.warn("[scrape-route] invalid request body", { body, metrics });
       return NextResponse.json(
-        { error: "url is required and must be a string" },
+        { error: "url is required and must be a string", fallback: true, metrics },
         { status: 400 }
       );
     }
 
     if (!isValidAmazonInUrl(url)) {
+      const metrics = { requestMs: Date.now() - requestStartedAt };
+      console.warn("[scrape-route] unsupported domain", { url, metrics });
       return NextResponse.json(
-        { error: "Only Amazon.in product URLs are supported." },
+        { error: "Only Amazon.in product URLs are supported.", fallback: true, metrics },
         { status: 400 }
       );
     }
 
     const normalizedUrl = normalizeUrl(url);
+    console.log("[scrape-route] request accepted", {
+      originalUrl: url,
+      normalizedUrl,
+      requestStartedAt,
+      timeoutMs: SCRAPER_TIMEOUT_MS,
+    });
 
-    // Run the Python scraper
     const workerOutput = await runPythonWorker(normalizedUrl);
-
     const scrapedData = mapToScrapedData(workerOutput);
+    const metrics = {
+      requestMs: Date.now() - requestStartedAt,
+      upstreamTimeoutMs: SCRAPER_TIMEOUT_MS,
+      productTitleLength: scrapedData.title?.length ?? 0,
+      imageCount: (scrapedData.imageUrl ? 1 : 0) + (Array.isArray(scrapedData.images) ? scrapedData.images.length : 0),
+    };
+
+    console.log("[scrape-route] response built successfully", {
+      normalizedUrl,
+      metrics,
+    });
 
     return NextResponse.json(
-      { ...scrapedData, scrapedAt: new Date().toISOString(), sourceUrl: normalizedUrl },
+      {
+        ...scrapedData,
+        scrapedAt: new Date().toISOString(),
+        sourceUrl: normalizedUrl,
+        metrics,
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
-    console.error("Scrape route error:", error);
-
+    const elapsedMs = Date.now() - requestStartedAt;
     const msg = error instanceof Error ? error.message : String(error);
     let statusCode = 500;
 
@@ -183,9 +245,23 @@ export async function POST(req: NextRequest) {
     else if (msg.includes("robot") || msg.includes("challenge")) statusCode = 503;
     else if (msg.includes("Validation failed") || msg.includes("ASIN")) statusCode = 422;
 
-    return NextResponse.json(
-      { error: msg, timestamp: new Date().toISOString() },
-      { status: statusCode }
-    );
+    const fallbackPayload = {
+      error: msg,
+      fallback: true,
+      timestamp: new Date().toISOString(),
+      metrics: {
+        requestMs: elapsedMs,
+        timeoutMs: SCRAPER_TIMEOUT_MS,
+      },
+    };
+
+    console.error("[scrape-route] final scrape failure", {
+      statusCode,
+      elapsedMs,
+      error: msg,
+      fallback: true,
+    });
+
+    return NextResponse.json(fallbackPayload, { status: statusCode });
   }
 }
