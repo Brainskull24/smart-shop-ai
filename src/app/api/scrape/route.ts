@@ -37,10 +37,11 @@ function isValidAmazonInUrl(url: string): boolean {
 
 const SCRAPER_SERVICE_URL = process.env.SCRAPER_SERVICE_URL || "http://127.0.0.1:8000";
 const SCRAPER_SERVICE_TOKEN = process.env.SCRAPER_SERVICE_TOKEN;
+const SCRAPER_TIMEOUT_MS = Number(process.env.SCRAPER_TIMEOUT_MS || 30_000);
 
 async function runPythonWorker(url: string): Promise<Record<string, unknown>> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 55_000);
+  const timeoutId = setTimeout(() => controller.abort(), SCRAPER_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${SCRAPER_SERVICE_URL.replace(/\/$/, "")}/scrape`, {
@@ -107,12 +108,13 @@ function mapToScrapedData(raw: Record<string, unknown>): ScrapedData {
       }))
     : [];
 
+  const images = Array.isArray(raw.images) ? raw.images.filter((item): item is string => typeof item === "string") : [];
+
   return {
     title: (raw.title as string) ?? "",
     priceBlockText,
-    imageUrl: Array.isArray(raw.images) && raw.images.length > 0
-      ? (raw.images[0] as string)
-      : undefined,
+    imageUrl: images.length > 0 ? images[0] : undefined,
+    images: images.length > 0 ? images : undefined,
     brand: raw.brand as string | undefined,
     rating: raw.rating != null ? String(raw.rating) : undefined,
     totalRatings: raw.review_count != null

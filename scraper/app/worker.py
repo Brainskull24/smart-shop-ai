@@ -33,11 +33,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Max scrape attempts per URL
-MAX_ATTEMPTS = 3
-
-# Seconds to wait between retries (exponential: 5, 10, 20)
-RETRY_BASE_SECONDS = 5
+# Production profile: keep retries limited so a single slow page doesn't stretch the request
+MAX_ATTEMPTS = 2
+RETRY_BASE_SECONDS = 3
 
 
 def scrape_product(url: str) -> dict:

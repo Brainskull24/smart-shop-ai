@@ -16,14 +16,12 @@ from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page, 
 
 logger = logging.getLogger(__name__)
 
-# Page load timeout in ms
-PAGE_TIMEOUT_MS = 30_000
+# Production-focused timeouts tuned for faster scrapes without timing out
+PAGE_TIMEOUT_MS = 20_000
+NAV_TIMEOUT_MS = 20_000
 
-# Navigation timeout in ms
-NAV_TIMEOUT_MS = 30_000
-
-# Resource types to block (speeds up load; product data is in HTML/JSON)
-BLOCKED_RESOURCE_TYPES = {"image", "font", "media", "stylesheet"}
+# Block only the heaviest resource types; keep CSS enabled so page structure loads faster
+BLOCKED_RESOURCE_TYPES = {"image", "font", "media"}
 
 # Domains to block regardless of resource type
 BLOCKED_DOMAINS = [
@@ -81,6 +79,10 @@ def create_browser():
                 "--disable-gpu",
                 "--disable-extensions",
                 "--disable-blink-features=AutomationControlled",
+                "--disable-background-networking",
+                "--disable-renderer-backgrounding",
+                "--disable-background-timer-throttling",
+                "--disable-ipc-flooding-protection",
             ],
         )
         logger.info("Browser launched")

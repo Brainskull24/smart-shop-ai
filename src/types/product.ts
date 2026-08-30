@@ -15,6 +15,7 @@ export interface ScrapedData {
   featureBullets?: string[];
   technicalDetails?: Record<string, string>;
   imageUrl?: string;
+  images?: string[];
   brand?: string;
   modelNumber?: string;
   rating?: string;

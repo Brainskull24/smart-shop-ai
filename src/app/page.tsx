@@ -167,19 +167,74 @@ const ProductCard = ({
   sourceUrl: string;
   scrapedAt: string;
 }) => {
+  const productImages = data.images && data.images.length > 0
+    ? data.images
+    : data.imageUrl
+      ? [data.imageUrl]
+      : [];
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [sourceUrl, data.title]);
+
+  const currentImage = productImages[selectedImageIndex] || productImages[0];
+
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
       {/* Product image + basic info */}
       <div className="flex flex-col md:flex-row w-full justify-between">
-        {data.imageUrl && (
-          <div className="md:w-1/2 flex-shrink-0 p-6 flex items-center justify-center bg-white/[0.02]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={data.imageUrl}
-              alt={data.title || "Product Image"}
-              className="object-contain w-4/5 h-auto max-h-[400px] md:max-h-[500px] rounded-lg"
-              onError={(e: React.SyntheticEvent<HTMLImageElement>) => (e.currentTarget.style.display = "none")}
-            />
+        {currentImage && (
+          <div className="md:w-1/2 flex-shrink-0 p-6 flex flex-col items-center justify-center bg-white/[0.02]">
+            <div className="relative w-full flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentImage}
+                alt={data.title || "Product Image"}
+                className="object-contain w-4/5 h-auto max-h-[400px] md:max-h-[500px] rounded-lg"
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => (e.currentTarget.style.display = "none")}
+              />
+              {productImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImageIndex((prev) => (prev === 0 ? productImages.length - 1 : prev - 1))}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9 flex items-center justify-center border border-white/10"
+                    aria-label="Previous product image"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImageIndex((prev) => (prev === productImages.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9 flex items-center justify-center border border-white/10"
+                    aria-label="Next product image"
+                  >
+                    →
+                  </button>
+                </>
+              )}
+            </div>
+            {productImages.length > 1 && (
+              <div className="mt-4 flex w-full gap-2 overflow-x-auto pb-1 px-1">
+                {productImages.map((image, index) => (
+                  <button
+                    key={`${image}-${index}`}
+                    type="button"
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-md border overflow-hidden ${selectedImageIndex === index ? "border-white ring-2 ring-white/40" : "border-white/10"}`}
+                    aria-label={`View product image ${index + 1}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={image}
+                      alt={`${data.title || "Product"} image ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <div className="p-6 md:p-8 flex-grow">
@@ -422,7 +477,7 @@ export default function App() {
       console.log("🌐 Starting web scrape...");
       const scrapeStartTime = performance.now();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       // Retry logic for 503/500 (server busy / ETXTBSY)
       let scrapeAttempts = 0;
